@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>원료 ↔ 속성 매칭 퀴즈</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", "Malgun Gothic", "맑은 고딕", sans-serif;
+    margin: 0;
+    padding: 24px 16px 60px;
+    background: #f3f8f5;
+    color: #1a3a2e;
+    line-height: 1.6;
+  }
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  h1 {
+    margin: 0 0 4px;
+    font-size: 1.5em;
+    color: #1b5e20;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .subtitle {
+    margin: 0 0 20px;
+    font-size: 0.85em;
+    color: #5a7a68;
+  }
+  .config-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    border: 1px solid #d5e5db;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    font-size: 0.85em;
+  }
+  .config-bar .info { color: #2e7d4a; }
+  .config-bar #ratioVal { font-weight: 700; }
+  .stats #resetBtn {
+    margin-left: auto;
+    background: #fff;
+    border: 1px solid #e0a8a8;
+    color: #c62828;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-family: inherit;
+    font-size: 0.85em;
+    cursor: pointer;
+  }
+  .stats #resetBtn:hover { background: #ffebee; }
+  .stats .io-btn {
+    font-size: 0.85em;
+    padding: 4px 10px;
+    background: #fff;
+    border: 1px solid #c8dccf;
+    color: #2e5a40;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .stats .io-btn:hover { background: #e8f5ec; border-color: #2e7d4a; }
+  .stats #backupIndicator {
+    font-size: 0.8em;
+    padding: 4px 10px;
+    background: #fff;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .stats #backupIndicator:hover { background: #f7f7f7; }
+  .ingredients-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 0.9em;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 1000;
+    max-width: 90%;
+    text-align: center;
+  }
+  .ingredients-toast.show { opacity: 1; }
+  .filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    background: #fff;
+    border: 1px solid #d5e5db;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 0.85em;
+  }
+  .filter-bar label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    user-select: none;
+    color: #2e5a40;
+  }
+  .filter-bar input[type="checkbox"] {
+    accent-color: #2e7d4a;
+    cursor: pointer;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid #d5e5db;
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(46, 125, 74, 0.06);
+  }
+  .qtype-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .qtype {
+    display: inline-block;
+    background: #e8f5ec;
+    color: #1b5e20;
+    font-size: 0.75em;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.02em;
+  }
+  .qtype.sub { background: #fff3e0; color: #b06200; }
+  .qtype.type2 { background: #e3f2fd; color: #0d47a1; }
+  .bookmark-btn {
+    background: none;
+    border: none;
+    font-size: 1.4em;
+    cursor: pointer;
+    color: #cfd8dc;
+    padding: 0 4px;
+    line-height: 1;
+    font-family: inherit;
+  }
+  .bookmark-btn.active { color: #ffa726; }
+  .group-label {
+    font-size: 0.95em;
+    color: #2e7d4a;
+    font-weight: 600;
+    margin-bottom: 4px;
+    letter-spacing: 0.03em;
+  }
+  .prompt-label {
+    font-size: 1.0em;
+    color: #5a7a68;
+    margin-bottom: 6px;
+  }
+  .prompt {
+    font-size: 1.25em;
+    font-weight: 700;
+    color: #1b5e20;
+    padding: 12px 0 18px;
+    border-bottom: 1px dashed #c8dccf;
+    margin-bottom: 16px;
+    word-break: keep-all;
+    text-align: center;
+  }
+  .choices {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .choice {
+    background: #f8fbf9;
+    border: 1.5px solid #d5e5db;
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 1em;
+    font-family: inherit;
+    color: #1a3a2e;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s, border-color 0.1s;
+    word-break: keep-all;
+  }
+  .choice:hover:not(:disabled) {
+    background: #e8f5ec;
+    border-color: #2e7d4a;
+  }
+  .choice:disabled { cursor: default; }
+  .choice.correct {
+    background: #c8e6c9;
+    border-color: #2e7d4a;
+    color: #1b5e20;
+    font-weight: 600;
+  }
+  .choice.wrong {
+    background: #ffcdd2;
+    border-color: #c62828;
+    color: #c62828;
+    font-weight: 600;
+  }
+  .subjective-input {
+    width: 100%;
+    font-family: inherit;
+    font-size: 1.05em;
+    padding: 12px 16px;
+    border: 1.5px solid #d5e5db;
+    border-radius: 10px;
+    background: #f8fbf9;
+    color: #1a3a2e;
+    outline: none;
+  }
+  .subjective-input:focus { border-color: #2e7d4a; background: #fff; }
+  .subjective-input:disabled { background: #f0f0f0; }
+  .submit-btn {
+    margin-top: 8px;
+    width: 100%;
+    padding: 10px;
+    background: #2e7d4a;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.95em;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .submit-btn:hover { background: #1b5e20; }
+  .submit-btn:disabled { background: #b0bec5; cursor: default; }
+  .actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .actions button {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #d5e5db;
+    background: #fff;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.9em;
+    color: #5a7a68;
+    cursor: pointer;
+  }
+  .actions button:hover { background: #f3f8f5; }
+  .actions button.next-btn {
+    background: #2e7d4a;
+    color: #fff;
+    border-color: #2e7d4a;
+    font-weight: 600;
+  }
+  .actions button.next-btn:hover { background: #1b5e20; }
+  .actions button.master-btn {
+    background: #fff;
+    color: #6a1b9a;
+    border-color: #ce93d8;
+    font-weight: 600;
+  }
+  .actions button.master-btn:hover { background: #f3e5f5; }
+  .actions button.master-btn.active {
+    background: #6a1b9a;
+    color: #fff;
+    border-color: #4a148c;
+  }
+  .actions button.master-btn.active:hover { background: #4a148c; }
+  .result {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 0.95em;
+    word-break: keep-all;
+  }
+  .result.correct {
+    background: #e8f5ec;
+    color: #1b5e20;
+    border: 1px solid #c8e6c9;
+  }
+  .result.wrong {
+    background: #ffebee;
+    color: #c62828;
+    border: 1px solid #ffcdd2;
+  }
+  .result .extra {
+    margin-top: 6px;
+    font-size: 0.9em;
+    color: #5a5a5a;
+    font-weight: 400;
+  }
+  .stats {
+    background: #fff;
+    border: 1px solid #d5e5db;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    font-size: 0.85em;
+    color: #5a7a68;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+  }
+  .stats span b { color: #1b5e20; font-weight: 700; }
+  details {
+    background: #fff;
+    border: 1px solid #d5e5db;
+    border-radius: 10px;
+    padding: 0 14px;
+    margin-bottom: 10px;
+  }
+  summary {
+    cursor: pointer;
+    padding: 10px 0;
+    font-weight: 600;
+    color: #1b5e20;
+    font-size: 0.9em;
+    list-style: none;
+  }
+  summary::before { content: "▸ "; color: #999; }
+  details[open] summary::before { content: "▾ "; }
+  .review-list {
+    max-height: 360px;
+    overflow-y: auto;
+    padding-bottom: 12px;
+  }
+  .review-item {
+    padding: 8px 0;
+    border-top: 1px solid #eee;
+    font-size: 0.88em;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .review-item:first-child { border-top: none; }
+  .review-item .label {
+    color: #5a7a68;
+    font-size: 0.85em;
+    margin-right: 6px;
+  }
+  .review-item .target { font-weight: 600; color: #1a3a2e; }
+  .review-item button {
+    background: none;
+    border: 1px solid #d5e5db;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-family: inherit;
+    font-size: 0.8em;
+    cursor: pointer;
+    color: #5a7a68;
+    white-space: nowrap;
+  }
+  .review-item button:hover { background: #f3f8f5; }
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #5a7a68;
+    font-size: 0.95em;
+  }
+  .empty-state code {
+    display: inline-block;
+    background: #e8f5ec;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    margin: 0 2px;
+  }
+  .help-btn {
+    width: 28px; height: 28px;
+    padding: 0;
+    background: #fff;
+    border: 1px solid #d5e5db;
+    border-radius: 6px;
+    font-size: 0.95em;
+    color: #2e7d4a;
+    cursor: pointer;
+    font-family: inherit;
+    line-height: 1;
+  }
+  .help-btn:hover { background: #e8f5ec; border-color: #2e7d4a; }
+  .help-modal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.35);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 200;
+  }
+  .help-content {
+    background: #fff;
+    border-radius: 14px;
+    padding: 20px 24px;
+    min-width: 300px;
+    max-width: 90vw;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  }
+  .help-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px;
+  }
+  .help-header h3 { margin: 0; font-size: 1.05em; color: #1b5e20; }
+  .help-close {
+    background: none; border: none; cursor: pointer;
+    font-size: 1.1em; color: #888; padding: 4px 8px;
+  }
+  .help-close:hover { color: #1a3a2e; }
+  .priority-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 0.78em;
+    font-weight: 700;
+    margin-left: 4px;
+  }
+  .priority-high { background: #fff3e0; color: #e65100; }
+  .priority-low  { background: #f5f5f5; color: #999; border: 1px solid #e0e0e0; }
+  .help-table { border-collapse: collapse; width: 100%; }
+  .help-table td { padding: 5px 0; font-size: 0.92em; vertical-align: middle; color: #1a3a2e; }
+  .help-table td:first-child { white-space: nowrap; padding-right: 14px; }
+  .help-table kbd {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #f3f8f5;
+    border: 1px solid #c8dccf;
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #1b5e20;
+    min-width: 22px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>원료 ↔ 속성 매칭</h1>
+  <div class="subtitle">2단원 화장품 원료 자동 출제 — <code>ingredients.js</code>에서 데이터 편집</div>
+
+  <div class="config-bar">
+    <span class="info">주관식 비율: <span id="ratioVal">50</span>% · 원료 <span id="ingCount">0</span>개 · 속성 <span id="attrCount">0</span>개</span>
+    <button class="help-btn" id="helpBtn" title="키보드 단축키 보기">⌨</button>
+  </div>
+
+  <div class="help-modal" id="helpModal" style="display:none">
+    <div class="help-content">
+      <div class="help-header">
+        <h3>키보드 단축키</h3>
+        <button class="help-close" id="helpClose" title="닫기">✕</button>
+      </div>
+      <table class="help-table">
+        <tr><td><kbd>Enter</kbd></td><td>제출 / 다음</td></tr>
+        <tr><td><kbd>?</kbd></td><td>모르겠음</td></tr>
+        <tr><td><kbd>&gt;</kbd></td><td>건너뛰기</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>되돌리기 (제출 후)</td></tr>
+        <tr><td><kbd>*</kbd></td><td>북마크 토글</td></tr>
+        <tr><td><kbd>+</kbd></td><td>숙지 토글 (정답 시)</td></tr>
+        <tr><td><kbd>1</kbd>~<kbd>5</kbd></td><td>객관식 보기 선택</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>진행상황 내보내기 (파일 저장)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <label><input type="checkbox" id="filterType1"> 유형1 (원료→속성)</label>
+    <label><input type="checkbox" id="filterType2"> 유형2 (속성→원료)</label>
+    <label><input type="checkbox" id="filterWrong"> 틀린 문제만</label>
+    <label><input type="checkbox" id="filterBookmark"> 북마크만</label>
+    <label><input type="checkbox" id="filterHighOnly"> ★ 중요만</label>
+    <label><input type="checkbox" id="filterLowExclude" checked> ＃ 포기 가능 포함</label>
+  </div>
+
+  <div id="quizArea"></div>
+
+  <div class="stats">
+    <span>전체 <b id="statPool">0</b>문제</span>
+    <span>1회독 <b id="statSeen1">0</b></span>
+    <span>2회독 <b id="statSeen2">0</b></span>
+    <span style="color:#c8dccf">|</span>
+    <span>정답 <b id="statCorrect">0</b></span>
+    <span>오답 <b id="statWrong">0</b></span>
+    <span>북마크 <b id="statBookmark">0</b></span>
+    <span>숙지 <b id="statMaster">0</b> (풀 제외)</span>
+    <span>누적 출제 <b id="statTotal">0</b></span>
+    <span id="backupIndicator" title="자동 백업 상태">⚠ 자동 백업 미설정</span>
+    <button id="resetBtn" title="진행상황만 초기화 (북마크·오답·숙지는 유지)">진행상황 초기화</button>
+    <button class="io-btn" id="exportBtn" title="진행상황을 파일로 저장 (단축키: Ctrl+S)">내보내기</button>
+    <button class="io-btn" id="importBtn" title="저장된 파일에서 진행상황 불러오기">가져오기</button>
+  </div>
+  <div class="ingredients-toast" id="ingredientsToast"></div>
+
+  <details>
+    <summary>오답 목록 (<span id="wrongCount">0</span>)</summary>
+    <div class="review-list" id="wrongList"></div>
+  </details>
+
+  <details>
+    <summary>북마크 목록 (<span id="bookmarkCount">0</span>)</summary>
+    <div class="review-list" id="bookmarkList"></div>
+  </details>
+
+  <details>
+    <summary>숙지 목록 — 풀에서 제외됨 (<span id="masterCount">0</span>)</summary>
+    <div class="review-list" id="masterList"></div>
+  </details>
+
+  <details>
+    <summary>★ 중요 목록 (<span id="highPriorityCount">0</span>)</summary>
+    <div class="review-list" id="highPriorityList"></div>
+  </details>
+</div>
+
+<script src="ingredients.js"></script>
+<script>
+// ============================================================
+// 파싱
+// ============================================================
+function extractPriority(str) {
+  const s = str.trimEnd();
+  if (s.endsWith('★')) return { text: s.slice(0, -1).trimEnd(), priority: 'high' };
+  if (s.endsWith('＃')) return { text: s.slice(0, -1).trimEnd(), priority: 'low' };
+  return { text: s, priority: null };
+}
+
+function parseData(text) {
+  const lines = text.split('\n');
+  let ratio = 50;
+  const attributes = []; // { name, subjective, priority, group, ingredients: [] }
+  const ingredientToAttrs = {}; // ingredient -> [attrName]
+  const ingredientPriority = {}; // ingredient name -> 'high' | 'low' | null
+  let currentAttr = null;
+  let currentGroup = null;
+
+  for (let rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    if (line.startsWith('//')) continue;
+
+    // Group end: === ===
+    if (/^===\s*===\s*$/.test(line)) {
+      currentGroup = null;
+      continue;
+    }
+    // Group start: === 그룹명 ===
+    const groupMatch = line.match(/^===\s*(.+?)\s*===\s*$/);
+    if (groupMatch) {
+      currentGroup = groupMatch[1];
+      continue;
+    }
+
+    if (line.startsWith('#')) {
+      const content = line.slice(1).trim();
+
+      const ratioMatch = content.match(/^주관식\s*비율\s*[:：]\s*(\d+)/);
+      if (ratioMatch) {
+        ratio = Math.max(0, Math.min(100, parseInt(ratioMatch[1], 10)));
+        continue;
+      }
+
+      let name = content;
+      let subjective = false;
+      if (name.endsWith('*')) {
+        subjective = true;
+        name = name.slice(0, -1).trim();
+      }
+      // extract priority from category name
+      const { text: cleanName, priority: attrPriority } = extractPriority(name);
+      name = cleanName;
+      if (!name) continue;
+
+      const existing = attributes.find(a => a.name === name);
+      if (existing) {
+        currentAttr = existing;
+        if (subjective) currentAttr.subjective = true;
+        if (attrPriority && !currentAttr.priority) currentAttr.priority = attrPriority;
+        if (currentGroup && !existing.group) existing.group = currentGroup;
+      } else {
+        currentAttr = { name, subjective, priority: attrPriority, group: currentGroup, ingredients: [] };
+        attributes.push(currentAttr);
+      }
+    } else {
+      if (!currentAttr) continue;
+      // extract priority from ingredient name
+      const { text: ingName, priority: ingPriority } = extractPriority(line);
+      if (currentAttr.ingredients.includes(ingName)) continue;
+      currentAttr.ingredients.push(ingName);
+      if (ingPriority) {
+        if (!ingredientPriority[ingName] || ingPriority === 'high') {
+          ingredientPriority[ingName] = ingPriority;
+        }
+      } else if (!ingredientPriority[ingName]) {
+        ingredientPriority[ingName] = null;
+      }
+      if (!ingredientToAttrs[ingName]) ingredientToAttrs[ingName] = [];
+      if (!ingredientToAttrs[ingName].includes(currentAttr.name)) {
+        ingredientToAttrs[ingName].push(currentAttr.name);
+      }
+    }
+  }
+
+  const groups = {};
+  for (const attr of attributes) {
+    if (attr.group) {
+      if (!groups[attr.group]) groups[attr.group] = [];
+      groups[attr.group].push(attr.name);
+    }
+  }
+  return { ratio, attributes, ingredientToAttrs, ingredientPriority, groups };
+}
+
+// ============================================================
+// 상태
+// ============================================================
+const STORAGE_KEY = 'ingredients_quiz_v1';
+const data = parseData(INGREDIENTS_TEXT);
+
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    const filters = s.filters || {};
+    if (filters.includeLow === undefined) filters.includeLow = true;
+    let seenCounts = s.seenCounts || {};
+    if (!s.seenMigrated) {
+      // 구버전 데이터 마이그레이션 (최초 1회만): wrongSet + masterSet을 최소 1회 본 것으로 초기화
+      for (const id of (s.wrongSet || [])) seenCounts[id] = Math.max(seenCounts[id] || 0, 1);
+      for (const id of (s.masterSet || [])) seenCounts[id] = Math.max(seenCounts[id] || 0, 1);
+    }
+    return {
+      correct: s.correct || 0,
+      wrong: s.wrong || 0,
+      total: s.total || 0,
+      wrongSet: new Set(s.wrongSet || []),
+      bookmarkSet: new Set(s.bookmarkSet || []),
+      masterSet: new Set(s.masterSet || []),
+      seenCounts,
+      filters
+    };
+  } catch {
+    return { correct: 0, wrong: 0, total: 0, wrongSet: new Set(), bookmarkSet: new Set(), masterSet: new Set(), seenCounts: {}, filters: { includeLow: true } };
+  }
+}
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    correct: state.correct,
+    wrong: state.wrong,
+    total: state.total,
+    wrongSet: [...state.wrongSet],
+    bookmarkSet: [...state.bookmarkSet],
+    masterSet: [...state.masterSet],
+    seenCounts: state.seenCounts,
+    seenMigrated: true,
+    filters: state.filters
+  }));
+  rotateSnapshot();
+}
+
+// ===== 자동 백업 시스템 =====
+// 1차: localStorage 스냅샷 링, 2차: File System Access (5문제마다), 3차: 마지막 저장 인디케이터
+const BACKUP_SNAPSHOT_COUNT = 5;
+const BACKUP_AUTOSAVE_EVERY = 5;
+const BACKUP_WARN_AFTER_MIN = 30;
+const BACKUP_HANDLE_KEY = 'ingredients-backup';
+let backupAnswersSinceFileSave = 0;
+let backupLastFileSaveTs = 0;
+let backupWarnedThisThreshold = false;
+let backupHandleReady = false;
+let _ingredientsToastTimer = null;
+
+function ingredientsToast(msg, color) {
+  const el = document.getElementById('ingredientsToast');
+  if (!el) return;
+  el.textContent = msg;
+  if (color) el.style.background = color;
+  el.classList.add('show');
+  if (_ingredientsToastTimer) clearTimeout(_ingredientsToastTimer);
+  _ingredientsToastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+function rotateSnapshot() {
+  try {
+    const json = localStorage.getItem(STORAGE_KEY);
+    if (!json || json === '{}' || json === 'null') return;
+    const nextKey = STORAGE_KEY + '_snap_next';
+    let idx = parseInt(localStorage.getItem(nextKey) || '0') % BACKUP_SNAPSHOT_COUNT;
+    localStorage.setItem(STORAGE_KEY + '_snap_' + idx, json);
+    localStorage.setItem(STORAGE_KEY + '_snap_' + idx + '_ts', Date.now().toString());
+    localStorage.setItem(nextKey, ((idx + 1) % BACKUP_SNAPSHOT_COUNT).toString());
+  } catch {}
+}
+function findLatestSnapshot() {
+  let latest = null;
+  for (let i = 0; i < BACKUP_SNAPSHOT_COUNT; i++) {
+    const data = localStorage.getItem(STORAGE_KEY + '_snap_' + i);
+    const ts = parseInt(localStorage.getItem(STORAGE_KEY + '_snap_' + i + '_ts') || '0');
+    if (data && (!latest || ts > latest.ts)) latest = { data, ts };
+  }
+  return latest;
+}
+function markFileSaved() {
+  backupLastFileSaveTs = Date.now();
+  backupWarnedThisThreshold = false;
+  backupAnswersSinceFileSave = 0;
+  updateBackupIndicator();
+}
+async function tryAutoSaveFile() {
+  if (!('showSaveFilePicker' in window)) return false;
+  try {
+    const handle = await _getHandle(BACKUP_HANDLE_KEY);
+    if (!handle) return false;
+    const perm = await handle.queryPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') return false;
+    const writable = await handle.createWritable();
+    await writable.write(localStorage.getItem(STORAGE_KEY) || '{}');
+    await writable.close();
+    markFileSaved();
+    return true;
+  } catch { return false; }
+}
+function noteAnswerSubmitted() {
+  backupAnswersSinceFileSave++;
+  if (backupAnswersSinceFileSave >= BACKUP_AUTOSAVE_EVERY) {
+    tryAutoSaveFile();
+  }
+}
+function updateBackupIndicator() {
+  const el = document.getElementById('backupIndicator');
+  if (!el) return;
+  if (!backupHandleReady) {
+    el.textContent = '⚠ 자동 백업 미설정';
+    el.style.color = '#c62828';
+    el.title = '클릭해서 자동 백업 위치를 지정하세요 (5문제마다 자동 저장)';
+    return;
+  }
+  if (!backupLastFileSaveTs) {
+    el.textContent = '✓ 자동 백업 준비됨';
+    el.style.color = '#2e7d32';
+    el.title = '5문제 풀이마다 자동 저장됩니다';
+    return;
+  }
+  const min = Math.floor((Date.now() - backupLastFileSaveTs) / 60000);
+  let txt, color;
+  if (min < 1) { txt = '✓ 방금 저장됨'; color = '#2e7d32'; }
+  else if (min < 10) { txt = '✓ ' + min + '분 전 저장됨'; color = '#2e7d32'; }
+  else if (min < 30) { txt = min + '분 전 저장됨'; color = '#f57c00'; }
+  else { txt = '⚠ ' + min + '분 전 저장됨'; color = '#c62828'; }
+  el.textContent = txt;
+  el.style.color = color;
+  el.title = '클릭해서 즉시 저장';
+  if (min >= BACKUP_WARN_AFTER_MIN && !backupWarnedThisThreshold) {
+    backupWarnedThisThreshold = true;
+    ingredientsToast('마지막 저장이 ' + min + '분 전입니다. 인디케이터 클릭으로 즉시 저장하세요.', '#c62828');
+  }
+}
+async function setupOrContinueAutoBackup() {
+  if (!('showSaveFilePicker' in window)) {
+    ingredientsToast('이 브라우저는 자동 백업을 지원하지 않습니다 (Chrome/Edge 권장)', '#c62828');
+    return;
+  }
+  try {
+    let handle = await _getHandle(BACKUP_HANDLE_KEY);
+    if (handle) {
+      let perm = await handle.queryPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') perm = await handle.requestPermission({ mode: 'readwrite' });
+      if (perm === 'granted') {
+        backupHandleReady = true;
+        await tryAutoSaveFile();
+        return;
+      }
+    }
+    handle = await window.showSaveFilePicker({
+      suggestedName: 'ingredients_backup.json',
+      startIn: handle ?? 'documents',
+      types: [{ description: 'JSON 파일', accept: { 'application/json': ['.json'] } }],
+    });
+    await _setHandle(BACKUP_HANDLE_KEY, handle);
+    backupHandleReady = true;
+    await tryAutoSaveFile();
+    ingredientsToast('자동 백업이 설정되었습니다', '#2e7d32');
+  } catch (e) {
+    if (e.name !== 'AbortError') console.warn('자동 백업 설정 실패:', e);
+  }
+}
+async function initBackupSystem() {
+  const main = localStorage.getItem(STORAGE_KEY);
+  const empty = !main || main === '{}' || main === 'null';
+  if (empty) {
+    const latest = findLatestSnapshot();
+    if (latest) {
+      const dt = new Date(latest.ts).toLocaleString('ko-KR');
+      if (confirm('저장된 진행상황이 비어있습니다.\n' + dt + '에 자동 백업된 스냅샷에서 복구하시겠어요?')) {
+        localStorage.setItem(STORAGE_KEY, latest.data);
+        location.reload();
+        return;
+      }
+    }
+  }
+  if ('showSaveFilePicker' in window) {
+    const handle = await _getHandle(BACKUP_HANDLE_KEY);
+    if (handle) {
+      const perm = await handle.queryPermission({ mode: 'readwrite' });
+      if (perm === 'granted') {
+        backupHandleReady = true;
+        await tryAutoSaveFile();
+      }
+    }
+  }
+  updateBackupIndicator();
+  setInterval(updateBackupIndicator, 60000);
+}
+const state = loadState();
+let currentQuestion = null;
+let answered = false;
+let lastSnapshot = null;
+let recentIds = [];
+
+// ============================================================
+// 유틸
+// ============================================================
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function pickN(arr, n) { return shuffle(arr).slice(0, n); }
+
+// ============================================================
+// 출제
+// ============================================================
+function getIdPriority(id) {
+  const [type, target] = id.split(/:(.+)/);
+  if (type === 'type1' || type === 'type1-sub') {
+    return data.ingredientPriority[target] || null;
+  } else {
+    const sec = data.attributes.find(a => a.name === target);
+    return sec ? sec.priority || null : null;
+  }
+}
+
+function getPoolIds() {
+  const allIngredients = Object.keys(data.ingredientToAttrs);
+  const allAttrNames = data.attributes.map(a => a.name);
+
+  const filterType1 = state.filters.type1;
+  const filterType2 = state.filters.type2;
+  const includeType1 = filterType1 || !filterType2;
+  const includeType2 = filterType2 || !filterType1;
+  const onlyWrong = state.filters.wrong;
+  const onlyBookmark = state.filters.bookmark;
+  const filterHighOnly = state.filters.highOnly;
+  const filterIncludeLow = state.filters.includeLow !== false;
+
+  const candidateIds = [];
+  if (includeType1) {
+    for (const ing of allIngredients) candidateIds.push('type1:' + ing);
+  }
+  if (includeType2) {
+    for (const attr of allAttrNames) {
+      const sec = data.attributes.find(a => a.name === attr);
+      if (sec.ingredients.length > 0) candidateIds.push('type2:' + attr);
+    }
+  }
+  let pool = candidateIds.filter(id => !state.masterSet.has(id));
+  if (onlyWrong) pool = pool.filter(id => state.wrongSet.has(id));
+  if (onlyBookmark) pool = pool.filter(id => state.bookmarkSet.has(id));
+  if (filterHighOnly) pool = pool.filter(id => getIdPriority(id) === 'high');
+  if (!filterIncludeLow) pool = pool.filter(id => getIdPriority(id) !== 'low');
+  return pool;
+}
+
+function generateQuestion() {
+  if (Object.keys(data.ingredientToAttrs).length === 0 || data.attributes.length === 0) return null;
+
+  const pool = getPoolIds();
+  if (pool.length === 0) return null;
+
+  const windowSize = Math.max(1, Math.floor(pool.length * 0.6));
+  const recentWindow = recentIds.slice(-windowSize);
+  const freshPool = pool.filter(id => !recentWindow.includes(id));
+  const pickedId = pickRandom(freshPool.length > 0 ? freshPool : pool);
+
+  recentIds.push(pickedId);
+  if (recentIds.length > 60) recentIds = recentIds.slice(-60);
+
+  return buildQuestion(pickedId);
+}
+
+function buildQuestion(id) {
+  const [type, target] = id.split(/:(.+)/);
+
+  if (type === 'type1') {
+    const ingredient = target;
+    const attrs = data.ingredientToAttrs[ingredient];
+    if (!attrs || attrs.length === 0) return null;
+    const answerAttr = pickRandom(attrs);
+    const answerSection = data.attributes.find(a => a.name === answerAttr);
+
+    const isSubjective = answerSection.subjective && (Math.random() * 100) < data.ratio;
+
+    if (isSubjective) {
+      return {
+        id,
+        type: 'type1-sub',
+        prompt: ingredient,
+        promptLabel: '이 원료의 속성(종류)은?',
+        answers: attrs.slice(),
+        canonical: answerAttr,
+        priority: data.ingredientPriority[ingredient] || null,
+        group: answerSection.group || null
+      };
+    }
+
+    const allAttrNames = data.attributes.map(a => a.name);
+    let wrongPool;
+    if (answerSection.group) {
+      const groupAttrs = data.attributes
+        .filter(a => a.group === answerSection.group)
+        .map(a => a.name);
+      wrongPool = groupAttrs.filter(a => !attrs.includes(a));
+      if (wrongPool.length < 4) {
+        const extra = allAttrNames.filter(a => !attrs.includes(a) && !wrongPool.includes(a));
+        wrongPool = wrongPool.concat(extra);
+      }
+    } else {
+      wrongPool = allAttrNames.filter(a => !attrs.includes(a));
+    }
+    const distractors = pickN(wrongPool, Math.min(4, wrongPool.length));
+    const choices = shuffle([answerAttr, ...distractors]);
+    return {
+      id,
+      type: 'type1',
+      prompt: ingredient,
+      promptLabel: '이 원료의 속성(종류)은?',
+      choices,
+      answer: answerAttr,
+      allAnswers: attrs.slice(),
+      priority: data.ingredientPriority[ingredient] || null,
+      group: answerSection.group || null
+    };
+  } else {
+    const attrName = target;
+    const section = data.attributes.find(a => a.name === attrName);
+    if (!section || section.ingredients.length === 0) return null;
+    const answerIng = pickRandom(section.ingredients);
+    const allIngredients = Object.keys(data.ingredientToAttrs);
+    let wrongPool;
+    if (section.group) {
+      const groupAttrNames = data.attributes
+        .filter(a => a.group === section.group && a.name !== attrName)
+        .map(a => a.name);
+      wrongPool = allIngredients.filter(i =>
+        !data.ingredientToAttrs[i].includes(attrName) &&
+        data.ingredientToAttrs[i].some(a => groupAttrNames.includes(a))
+      );
+      if (wrongPool.length < 4) {
+        const extra = allIngredients.filter(i =>
+          !data.ingredientToAttrs[i].includes(attrName) && !wrongPool.includes(i)
+        );
+        wrongPool = wrongPool.concat(extra);
+      }
+    } else {
+      wrongPool = allIngredients.filter(i => !data.ingredientToAttrs[i].includes(attrName));
+    }
+    const distractors = pickN(wrongPool, Math.min(4, wrongPool.length));
+    const choices = shuffle([answerIng, ...distractors]);
+    return {
+      id,
+      type: 'type2',
+      prompt: attrName,
+      promptLabel: '이 속성에 해당하는 원료는?',
+      choices,
+      answer: answerIng,
+      priority: section.priority || null,
+      group: section.group || null
+    };
+  }
+}
+
+// ============================================================
+// 렌더링
+// ============================================================
+const quizArea = document.getElementById('quizArea');
+
+function renderEmpty(msg) {
+  quizArea.innerHTML = `<div class="card"><div class="empty-state">${msg}</div></div>`;
+}
+
+function renderQuestion(q) {
+  answered = false;
+  currentQuestion = q;
+
+  let typeLabel = '유형 1 · 원료 → 속성';
+  let typeClass = '';
+  if (q.type === 'type1-sub') { typeLabel = '유형 1 · 주관식'; typeClass = 'sub'; }
+  else if (q.type === 'type2') { typeLabel = '유형 2 · 속성 → 원료'; typeClass = 'type2'; }
+
+  const bookmarked = state.bookmarkSet.has(q.id);
+
+  let bodyHtml = '';
+  if (q.type === 'type1-sub') {
+    bodyHtml = `
+      <input type="text" id="subInput" class="subjective-input" placeholder="답을 입력하고 Enter">
+      <button id="submitBtn" class="submit-btn">제출</button>
+    `;
+  } else {
+    bodyHtml = `<div class="choices">${
+      q.choices.map((c, i) => `<button class="choice" data-idx="${i}">${escapeHtml(c)}</button>`).join('')
+    }</div>`;
+  }
+
+  quizArea.innerHTML = `
+    <div class="card">
+      <div class="qtype-row">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span class="qtype ${typeClass}">${typeLabel}</span>
+          ${q.priority === 'high' ? '<span class="priority-badge priority-high">★ 중요</span>' : q.priority === 'low' ? '<span class="priority-badge priority-low">＃ 포기 가능</span>' : ''}
+        </div>
+        <button class="bookmark-btn ${bookmarked ? 'active' : ''}" id="bookmarkBtn" title="북마크 (단축키: *)">${bookmarked ? '★' : '☆'}</button>
+      </div>
+      ${q.group ? `<div class="group-label">[ ${escapeHtml(q.group)} ]</div>` : ''}
+      <div class="prompt-label">${q.promptLabel}</div>
+      <div class="prompt">${escapeHtml(q.prompt)}</div>
+      ${bodyHtml}
+      <div class="actions">
+        <button id="dontKnowBtn" title="단축키: ?">모르겠음 (?)</button>
+        <button id="skipBtn" title="단축키: >">건너뛰기 (&gt;)</button>
+      </div>
+      <div id="resultBox"></div>
+    </div>
+  `;
+
+  document.getElementById('bookmarkBtn').addEventListener('click', toggleBookmark);
+  document.getElementById('dontKnowBtn').addEventListener('click', onDontKnow);
+  document.getElementById('skipBtn').addEventListener('click', () => { if (!answered) nextQuestion(); });
+
+  if (q.type === 'type1-sub') {
+    const input = document.getElementById('subInput');
+    input.focus();
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submitSubjective();
+      }
+    });
+    document.getElementById('submitBtn').addEventListener('click', submitSubjective);
+  } else {
+    document.querySelectorAll('.choice').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx, 10);
+        submitChoice(idx);
+      });
+    });
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ============================================================
+// 답 제출
+// ============================================================
+function submitChoice(idx) {
+  if (answered) return;
+  answered = true;
+  const q = currentQuestion;
+  const picked = q.choices[idx];
+  const isCorrect = picked === q.answer;
+
+  document.querySelectorAll('.choice').forEach((btn, i) => {
+    btn.disabled = true;
+    if (q.choices[i] === q.answer) btn.classList.add('correct');
+    else if (i === idx) btn.classList.add('wrong');
+  });
+
+  finalize(isCorrect);
+}
+
+function submitSubjective() {
+  if (answered) return;
+  const input = document.getElementById('subInput');
+  const userVal = (input.value || '').trim();
+  if (!userVal) { input.focus(); return; }
+  answered = true;
+  input.disabled = true;
+  document.getElementById('submitBtn').disabled = true;
+
+  const q = currentQuestion;
+  const norm = s => s.replace(/\s+/g, '').toLowerCase();
+  const isCorrect = q.answers.some(a => norm(a) === norm(userVal));
+  finalize(isCorrect);
+}
+
+function onDontKnow() {
+  if (answered) return;
+  answered = true;
+  const q = currentQuestion;
+  if (q.type === 'type1-sub') {
+    const input = document.getElementById('subInput');
+    if (input) input.disabled = true;
+    const sb = document.getElementById('submitBtn');
+    if (sb) sb.disabled = true;
+  } else {
+    document.querySelectorAll('.choice').forEach(btn => {
+      btn.disabled = true;
+      if (q.choices[btn.dataset.idx | 0] === q.answer) btn.classList.add('correct');
+    });
+  }
+  finalize(false);
+}
+
+function finalize(isCorrect) {
+  const q = currentQuestion;
+  // 되돌리기용 스냅샷 (상태 변경 직전)
+  lastSnapshot = {
+    qRef: q,
+    stateBefore: {
+      correct: state.correct,
+      wrong: state.wrong,
+      total: state.total,
+      wasInWrongSet: state.wrongSet.has(q.id),
+      seenCountBefore: state.seenCounts[q.id] || 0,
+    }
+  };
+  state.total++;
+  state.seenCounts[q.id] = (state.seenCounts[q.id] || 0) + 1;
+  if (isCorrect) {
+    state.correct++;
+    state.wrongSet.delete(q.id);
+  } else {
+    state.wrong++;
+    state.wrongSet.add(q.id);
+  }
+  saveState();
+  noteAnswerSubmitted();
+  updateStats();
+
+  const resultBox = document.getElementById('resultBox');
+  let answerText;
+  if (q.type === 'type1-sub') {
+    answerText = q.answers.join(', ');
+  } else if (q.type === 'type1') {
+    answerText = q.answer + (q.allAnswers.length > 1 ? ' (전체: ' + q.allAnswers.join(', ') + ')' : '');
+  } else {
+    answerText = q.answer;
+  }
+  resultBox.innerHTML = `
+    <div class="result ${isCorrect ? 'correct' : 'wrong'}">
+      <div>${isCorrect ? '✓ 정답' : '✗ 오답'}</div>
+      <div class="extra">정답: ${escapeHtml(answerText)}</div>
+    </div>
+  `;
+
+  const actions = document.querySelector('.actions');
+  let actionsHtml = `<button class="next-btn" id="nextBtn">다음 (Enter)</button>`;
+  // 정답 맞췄을 때만 숙지 버튼 노출
+  if (isCorrect) {
+    const isMastered = state.masterSet.has(q.id);
+    actionsHtml += `<button class="master-btn ${isMastered ? 'active' : ''}" id="masterBtn" title="확실히 외운 문제 — 이후 풀에서 제외됨">${isMastered ? '✓ 숙지됨 (+)' : '✓ 숙지 (+)'}</button>`;
+  }
+  actionsHtml += `<button id="undoBtn" title="방금 제출을 취소하고 답 입력으로 되돌림 (정·오답 카운트도 복원)">↶ 되돌리기 (Esc)</button>`;
+  actions.innerHTML = actionsHtml;
+  document.getElementById('nextBtn').addEventListener('click', nextQuestion);
+  const mBtn = document.getElementById('masterBtn');
+  if (mBtn) mBtn.addEventListener('click', toggleMaster);
+  document.getElementById('undoBtn').addEventListener('click', undoSubmission);
+}
+
+function undoSubmission() {
+  if (!lastSnapshot) return;
+  const snap = lastSnapshot;
+  state.correct = snap.stateBefore.correct;
+  state.wrong = snap.stateBefore.wrong;
+  state.total = snap.stateBefore.total;
+  if (snap.stateBefore.wasInWrongSet) state.wrongSet.add(snap.qRef.id);
+  else state.wrongSet.delete(snap.qRef.id);
+  state.seenCounts[snap.qRef.id] = snap.stateBefore.seenCountBefore;
+  if (state.seenCounts[snap.qRef.id] === 0) delete state.seenCounts[snap.qRef.id];
+  lastSnapshot = null;
+  saveState();
+  updateStats();
+  // 같은 문제 다시 렌더 (입력 활성 상태로)
+  renderQuestion(snap.qRef);
+}
+
+function nextQuestion() {
+  lastSnapshot = null;
+  const q = generateQuestion();
+  if (!q) {
+    renderEmpty('출제 가능한 문제가 없습니다. 필터를 해제하거나 숙지 목록에서 일부 항목을 해제하세요.');
+    return;
+  }
+  renderQuestion(q);
+}
+
+// ============================================================
+// 북마크 / 통계 / 필터
+// ============================================================
+function toggleBookmark() {
+  const id = currentQuestion.id;
+  if (state.bookmarkSet.has(id)) state.bookmarkSet.delete(id);
+  else state.bookmarkSet.add(id);
+  saveState();
+  updateStats();
+  const btn = document.getElementById('bookmarkBtn');
+  const active = state.bookmarkSet.has(id);
+  btn.classList.toggle('active', active);
+  btn.textContent = active ? '★' : '☆';
+  // 결과 화면이면 Enter로 다음 진행 가능하도록 포커스 복귀
+  if (answered) {
+    const nextBtn = document.getElementById('nextBtn');
+    if (nextBtn) nextBtn.focus();
+  }
+}
+
+function toggleMaster() {
+  const id = currentQuestion.id;
+  const wasMastered = state.masterSet.has(id);
+  if (wasMastered) state.masterSet.delete(id);
+  else state.masterSet.add(id);
+  saveState();
+  updateStats();
+  const btn = document.getElementById('masterBtn');
+  if (btn) {
+    const nowMastered = state.masterSet.has(id);
+    btn.classList.toggle('active', nowMastered);
+    btn.textContent = nowMastered ? '✓ 숙지됨 (+)' : '✓ 숙지 (+)';
+  }
+  // 결과 화면이면 Enter로 다음 진행 가능하도록 포커스 복귀
+  if (answered) {
+    const nextBtn = document.getElementById('nextBtn');
+    if (nextBtn) nextBtn.focus();
+  }
+}
+
+function updateStats() {
+  const poolIds = getPoolIds();
+  const poolSize = poolIds.length;
+  const seen1 = poolIds.filter(id => (state.seenCounts[id] || 0) >= 1).length;
+  const seen2 = poolIds.filter(id => (state.seenCounts[id] || 0) >= 2).length;
+  document.getElementById('statPool').textContent = poolSize;
+  document.getElementById('statSeen1').textContent = seen1 + '/' + poolSize;
+  document.getElementById('statSeen2').textContent = seen2 + '/' + poolSize;
+  document.getElementById('statCorrect').textContent = state.correct;
+  document.getElementById('statWrong').textContent = state.wrong;
+  document.getElementById('statBookmark').textContent = state.bookmarkSet.size;
+  document.getElementById('statMaster').textContent = state.masterSet.size;
+  document.getElementById('statTotal').textContent = state.total;
+  document.getElementById('wrongCount').textContent = state.wrongSet.size;
+  document.getElementById('bookmarkCount').textContent = state.bookmarkSet.size;
+  document.getElementById('masterCount').textContent = state.masterSet.size;
+  renderReviewList('wrongList', state.wrongSet);
+  renderReviewList('bookmarkList', state.bookmarkSet);
+  renderReviewList('masterList', state.masterSet);
+  updateHighPriorityList();
+}
+
+function updateHighPriorityList() {
+  const allIds = [];
+  for (const ing of Object.keys(data.ingredientToAttrs)) {
+    if ((data.ingredientPriority[ing] || null) === 'high') allIds.push({ id: 'type1:' + ing, label: '원료', target: ing });
+  }
+  for (const attr of data.attributes) {
+    if (attr.priority === 'high') allIds.push({ id: 'type2:' + attr.name, label: '속성', target: attr.name });
+  }
+  document.getElementById('highPriorityCount').textContent = allIds.length;
+  const list = document.getElementById('highPriorityList');
+  if (allIds.length === 0) {
+    list.innerHTML = '<div class="empty-state" style="padding:12px 0;font-size:0.85em;color:#999">★ 중요로 표시된 항목이 없습니다.</div>';
+    return;
+  }
+  list.innerHTML = allIds.map(({ id, label, target }) => `
+    <div class="review-item">
+      <div><span class="label">${label}</span><span class="target">${escapeHtml(target)}</span></div>
+    </div>
+  `).join('');
+}
+
+function renderReviewList(elId, set) {
+  const el = document.getElementById(elId);
+  if (set.size === 0) {
+    el.innerHTML = '<div class="empty-state" style="padding:20px 0">없음</div>';
+    return;
+  }
+  el.innerHTML = [...set].map(id => {
+    const [type, target] = id.split(/:(.+)/);
+    const label = type === 'type1' ? '원료' : '속성';
+    const removeAction = elId === 'wrongList' ? '제거' : '해제';
+    return `
+      <div class="review-item">
+        <div><span class="label">${label}</span><span class="target">${escapeHtml(target)}</span></div>
+        <button data-id="${escapeHtml(id)}" data-list="${elId}">${removeAction}</button>
+      </div>
+    `;
+  }).join('');
+  el.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      const id = b.dataset.id;
+      if (b.dataset.list === 'wrongList') state.wrongSet.delete(id);
+      else if (b.dataset.list === 'masterList') state.masterSet.delete(id);
+      else state.bookmarkSet.delete(id);
+      saveState();
+      updateStats();
+      // 현재 문제의 숙지가 해제된 경우 버튼도 갱신
+      if (currentQuestion && currentQuestion.id === id && answered) {
+        const mBtn = document.getElementById('masterBtn');
+        if (mBtn) {
+          mBtn.classList.remove('active');
+          mBtn.textContent = '✓ 숙지 (+)';
+        }
+      }
+    });
+  });
+}
+
+function setupFilters() {
+  const map = {
+    filterType1: 'type1',
+    filterType2: 'type2',
+    filterWrong: 'wrong',
+    filterBookmark: 'bookmark',
+    filterHighOnly: 'highOnly'
+  };
+  for (const [elId, key] of Object.entries(map)) {
+    const el = document.getElementById(elId);
+    el.checked = !!state.filters[key];
+    el.addEventListener('change', () => {
+      state.filters[key] = el.checked;
+      saveState();
+      nextQuestion();
+    });
+  }
+
+  const lowEl = document.getElementById('filterLowExclude');
+  lowEl.checked = state.filters.includeLow !== false;
+  lowEl.addEventListener('change', () => {
+    state.filters.includeLow = lowEl.checked;
+    saveState();
+    nextQuestion();
+  });
+}
+
+function _openHandleDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open('quiz-fs', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+    req.onsuccess = e => res(e.target.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+async function _getHandle(key) {
+  try {
+    const db = await _openHandleDB();
+    return await new Promise(res => {
+      db.transaction('handles').objectStore('handles').get(key).onsuccess = e => res(e.target.result ?? null);
+    });
+  } catch { return null; }
+}
+async function _setHandle(key, handle) {
+  try {
+    const db = await _openHandleDB();
+    await new Promise(res => {
+      const tx = db.transaction('handles', 'readwrite');
+      tx.objectStore('handles').put(handle, key);
+      tx.oncomplete = res;
+    });
+  } catch {}
+}
+
+async function exportData() {
+  const json = localStorage.getItem(STORAGE_KEY) || '{}';
+  if ('showSaveFilePicker' in window) {
+    try {
+      let handle = await _getHandle('ingredients-backup');
+      if (handle) {
+        let perm = await handle.queryPermission({ mode: 'readwrite' });
+        if (perm !== 'granted') perm = await handle.requestPermission({ mode: 'readwrite' });
+        if (perm === 'granted') {
+          const writable = await handle.createWritable();
+          await writable.write(json);
+          await writable.close();
+          backupHandleReady = true;
+          markFileSaved();
+          ingredientsToast('저장됨', '#2e7d32');
+          return;
+        }
+      }
+      handle = await window.showSaveFilePicker({
+        suggestedName: 'ingredients_backup.json',
+        startIn: handle ?? 'documents',
+        types: [{ description: 'JSON 파일', accept: { 'application/json': ['.json'] } }],
+      });
+      await _setHandle('ingredients-backup', handle);
+      const writable = await handle.createWritable();
+      await writable.write(json);
+      await writable.close();
+      backupHandleReady = true;
+      markFileSaved();
+      ingredientsToast('저장됨', '#2e7d32');
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+  const ts = new Date().toISOString().slice(0, 10);
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `ingredients_backup_${ts}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  ingredientsToast('저장됨', '#2e7d32');
+}
+
+async function importData() {
+  if ('showOpenFilePicker' in window) {
+    try {
+      const savedHandle = await _getHandle('ingredients-backup');
+      const [handle] = await window.showOpenFilePicker({
+        startIn: savedHandle ?? 'documents',
+        types: [{ description: 'JSON 파일', accept: { 'application/json': ['.json'] } }],
+      });
+      const text = await (await handle.getFile()).text();
+      try {
+        const parsed = JSON.parse(text);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        const fresh = loadState();
+        Object.assign(state, fresh);
+        setupFilters();
+        updateStats();
+        nextQuestion();
+      } catch {
+        alert('파일 형식이 올바르지 않습니다.');
+      }
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        const fresh = loadState();
+        Object.assign(state, fresh);
+        setupFilters();
+        updateStats();
+        nextQuestion();
+      } catch {
+        alert('파일 형식이 올바르지 않습니다.');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function setupReset() {
+  document.getElementById('exportBtn').addEventListener('click', exportData);
+  document.getElementById('importBtn').addEventListener('click', importData);
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    if (!confirm('진행상황(정답·오답·누적 출제 카운트)만 초기화합니다.\n북마크·오답·숙지 목록은 유지됩니다.\n계속할까요?')) return;
+    state.correct = 0;
+    state.wrong = 0;
+    state.total = 0;
+    state.seenCounts = {};
+    saveState();
+    updateStats();
+  });
+}
+
+// ============================================================
+// 도움말 모달
+// ============================================================
+const helpModal = document.getElementById('helpModal');
+document.getElementById('helpBtn').addEventListener('click', () => { helpModal.style.display = 'flex'; });
+document.getElementById('helpClose').addEventListener('click', () => { helpModal.style.display = 'none'; });
+helpModal.addEventListener('click', (e) => { if (e.target === helpModal) helpModal.style.display = 'none'; });
+
+// ============================================================
+// 전역 단축키
+// ============================================================
+document.addEventListener('keydown', (e) => {
+  // Ctrl+S → 내보내기 (항상)
+  if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    exportData();
+    return;
+  }
+  // 도움말 열려있을 땐 Esc로 닫기만
+  if (helpModal.style.display !== 'none') {
+    if (e.key === 'Escape') { e.preventDefault(); helpModal.style.display = 'none'; }
+    return;
+  }
+  if (!currentQuestion) return;
+
+  // Enter → 다음 (답한 후, 입력 필드 밖에서만)
+  if (e.key === 'Enter' && answered) {
+    if (e.target.tagName === 'INPUT') return;
+    e.preventDefault();
+    nextQuestion();
+    return;
+  }
+
+  // Esc → 되돌리기 (답한 후 + 스냅샷 있을 때)
+  if (e.key === 'Escape' && answered && lastSnapshot) {
+    e.preventDefault();
+    undoSubmission();
+    return;
+  }
+
+  // * (Shift+8) → 북마크 토글 (항상)
+  if (e.key === '*') {
+    e.preventDefault();
+    toggleBookmark();
+    return;
+  }
+
+  // + (Shift+=) → 숙지 토글 (답한 후 + 정답 시: 숙지 버튼이 존재할 때)
+  if (e.key === '+') {
+    if (answered && document.getElementById('masterBtn')) {
+      e.preventDefault();
+      toggleMaster();
+    }
+    return;
+  }
+
+  // 이하는 답변 단계에서만
+  if (answered) return;
+
+  // > (Shift+.) → 건너뛰기
+  if (e.key === '>') {
+    e.preventDefault();
+    nextQuestion();
+    return;
+  }
+
+  // ? (Shift+/) → 모르겠음 (입력 필드 안에서도 동작)
+  if (e.key === '?') {
+    e.preventDefault();
+    onDontKnow();
+    return;
+  }
+
+  // 숫자키 (객관식만, 입력 필드 밖에서만)
+  if (currentQuestion.type === 'type1-sub') return;
+  if (e.target.tagName === 'INPUT') return;
+  const n = parseInt(e.key, 10);
+  if (currentQuestion.choices && n >= 1 && n <= currentQuestion.choices.length) {
+    e.preventDefault();
+    submitChoice(n - 1);
+  }
+});
+
+// ============================================================
+// 시작
+// ============================================================
+function start() {
+  document.getElementById('ratioVal').textContent = data.ratio;
+  document.getElementById('ingCount').textContent = Object.keys(data.ingredientToAttrs).length;
+  document.getElementById('attrCount').textContent = data.attributes.length;
+
+  setupFilters();
+  setupReset();
+  updateStats();
+  updateHighPriorityList();
+  document.getElementById('backupIndicator').addEventListener('click', setupOrContinueAutoBackup);
+  initBackupSystem();
+
+  if (data.attributes.length === 0 || Object.keys(data.ingredientToAttrs).length === 0) {
+    renderEmpty(
+      '아직 데이터가 없습니다.<br><br>' +
+      '<code>ingredients.js</code> 파일을 메모장으로 열고<br>' +
+      '<code>// ───────── 여기서부터 데이터를 작성하세요 ─────────</code><br>' +
+      '아래에 속성과 원료를 추가하세요.'
+    );
+    return;
+  }
+
+  nextQuestion();
+}
+
+start();
+</script>
+</body>
+</html>
