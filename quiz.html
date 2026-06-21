@@ -2593,13 +2593,36 @@
   document.getElementById('backupIndicator').addEventListener('click', setupOrContinueAutoBackup);
   initBackupSystem();
 
-  if ('serviceWorker' in navigator) {
+  (function setupSwStatus() {
+    const swStatus = document.createElement('div');
+    swStatus.style.cssText = 'position:fixed;bottom:8px;right:8px;padding:6px 10px;font-size:0.72em;background:#fff;border:1px solid #ccc;border-radius:6px;z-index:9999;font-family:inherit;color:#333;box-shadow:0 1px 3px rgba(0,0,0,.1)';
+    swStatus.textContent = '⏳ 오프라인 확인 중';
+    document.body.appendChild(swStatus);
+
+    if (!('serviceWorker' in navigator)) {
+      swStatus.textContent = '❌ 오프라인 미지원';
+      swStatus.style.background = '#ffe0e0';
+      return;
+    }
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch((err) => {
-        console.warn('Service Worker 등록 실패:', err);
-      });
+      navigator.serviceWorker.register('./sw.js')
+        .then(() => {
+          swStatus.textContent = '📡 캐싱 중...';
+          return navigator.serviceWorker.ready;
+        })
+        .then(() => {
+          swStatus.textContent = '✅ 오프라인 준비됨';
+          swStatus.style.background = '#e8f5ec';
+          swStatus.style.borderColor = '#2e7d4a';
+          setTimeout(() => { swStatus.style.opacity = '0.5'; }, 8000);
+        })
+        .catch((err) => {
+          swStatus.textContent = '❌ SW 오류: ' + (err && err.message ? err.message : err);
+          swStatus.style.background = '#ffe0e0';
+          swStatus.style.borderColor = '#c62828';
+        });
     });
-  }
+  })();
 </script>
 </body>
 </html>
