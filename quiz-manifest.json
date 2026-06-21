@@ -1,6 +1,7 @@
 {
   "name": "조제관리사 퀴즈",
   "short_name": "퀴즈",
+  "id": "/quiz/quiz",
   "start_url": "./quiz.html",
   "scope": "./",
   "display": "standalone",

@@ -1,0 +1,12 @@
+{
+  "name": "원료 ↔ 속성 매칭 퀴즈",
+  "short_name": "원료",
+  "id": "/quiz/ingredients",
+  "start_url": "./ingredients.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f8f5",
+  "theme_color": "#1b5e20",
+  "lang": "ko"
+}

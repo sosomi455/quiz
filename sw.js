@@ -1,10 +1,11 @@
-const CACHE_NAME = 'quiz-cache-v2';
+const CACHE_NAME = 'quiz-cache-v3';
 const ASSETS = [
   './quiz.html',
   './ingredients.html',
   './data.js',
   './ingredients.js',
-  './manifest.json'
+  './quiz-manifest.json',
+  './ingredients-manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
