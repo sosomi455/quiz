@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="성분 퀴즈">
+<link rel="manifest" href="./manifest.json">
 <title>원료 ↔ 속성 매칭 퀴즈</title>
 <style>
   * { box-sizing: border-box; }
@@ -1603,6 +1607,14 @@ function start() {
 }
 
 start();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch((err) => {
+      console.warn('Service Worker 등록 실패:', err);
+    });
+  });
+}
 </script>
 </body>
 </html>
