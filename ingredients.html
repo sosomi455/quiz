@@ -1608,7 +1608,15 @@ function start() {
 
 start();
 
-(function setupSwStatus() {
+(function setupPwaUi() {
+  const reloadBtn = document.createElement('button');
+  reloadBtn.type = 'button';
+  reloadBtn.textContent = '🔄';
+  reloadBtn.title = '새로고침';
+  reloadBtn.style.cssText = 'position:fixed;bottom:8px;left:8px;width:40px;height:40px;font-size:1.2em;background:#fff;border:1px solid #ccc;border-radius:50%;z-index:9999;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.15);padding:0;line-height:1';
+  reloadBtn.addEventListener('click', () => location.reload());
+  document.body.appendChild(reloadBtn);
+
   const swStatus = document.createElement('div');
   swStatus.style.cssText = 'position:fixed;bottom:8px;right:8px;padding:6px 10px;font-size:0.72em;background:#fff;border:1px solid #ccc;border-radius:6px;z-index:9999;font-family:inherit;color:#333;box-shadow:0 1px 3px rgba(0,0,0,.1)';
   swStatus.textContent = '⏳ 오프라인 확인 중';
@@ -1622,14 +1630,17 @@ start();
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
       .then(() => {
-        swStatus.textContent = '📡 캐싱 중...';
+        swStatus.textContent = '📡 캐싱 중... (닫지 마세요)';
+        swStatus.style.background = '#fff8e1';
         return navigator.serviceWorker.ready;
       })
-      .then(() => {
-        swStatus.textContent = '✅ 오프라인 준비됨';
+      .then(async () => {
+        const cache = await caches.open('quiz-cache-v3');
+        const keys = await cache.keys();
+        swStatus.textContent = '✅ 오프라인 준비됨 (' + keys.length + '개 파일)';
         swStatus.style.background = '#e8f5ec';
         swStatus.style.borderColor = '#2e7d4a';
-        setTimeout(() => { swStatus.style.opacity = '0.5'; }, 8000);
+        setTimeout(() => { swStatus.style.opacity = '0.5'; }, 10000);
       })
       .catch((err) => {
         swStatus.textContent = '❌ SW 오류: ' + (err && err.message ? err.message : err);
