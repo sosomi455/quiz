@@ -2620,7 +2620,7 @@
           return navigator.serviceWorker.ready;
         })
         .then(async () => {
-          const cache = await caches.open('quiz-cache-v3');
+          const cache = await caches.open('quiz-cache-v4');
           const keys = await cache.keys();
           swStatus.textContent = '✅ 오프라인 준비됨 (' + keys.length + '개 파일)';
           swStatus.style.background = '#e8f5ec';
