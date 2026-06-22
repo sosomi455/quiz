@@ -1029,7 +1029,7 @@
     while ((match = regex.exec(cloze)) !== null) {
       result += escapeHtml(cloze.slice(lastIdx, match.index));
       const gi = posToGroup.get(counter);
-      result += `<input type="text" class="multi-blank" data-group-idx="${gi}" autocomplete="off" autocapitalize="off" autocorrect="off">`;
+      result += `<input type="text" class="multi-blank" data-group-idx="${gi}" name="mb-${Date.now()}-${gi}-${counter}" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false">`;
       counter++;
       lastIdx = regex.lastIndex;
     }
@@ -1636,7 +1636,7 @@
     if (!q) return;
 
     if (q.type === 'def' || q.type === 'cloze') {
-      answerArea.innerHTML = '<input type="text" id="answerInput" placeholder="답을 입력하세요" autocomplete="off" autocapitalize="off" autocorrect="off">';
+      answerArea.innerHTML = `<input type="text" id="answerInput" placeholder="답을 입력하세요" name="ai-${Date.now()}" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false">`;
       const input = document.getElementById('answerInput');
       input.addEventListener('keydown', e => {
         if (e.key === 'Enter' && !e.isComposing) {
@@ -1672,7 +1672,7 @@
       const n = q.answer.length;
       let html = '<div class="list-inputs">';
       for (let i = 0; i < n; i++) {
-        html += `<div class="list-input-row"><span class="num">${i+1}.</span><input type="text" class="list-input" data-idx="${i}" autocomplete="off" autocapitalize="off" autocorrect="off"></div>`;
+        html += `<div class="list-input-row"><span class="num">${i+1}.</span><input type="text" class="list-input" data-idx="${i}" name="li-${Date.now()}-${i}" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false"></div>`;
       }
       html += '</div>';
       answerArea.innerHTML = html;

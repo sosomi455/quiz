@@ -1018,7 +1018,7 @@ function renderQuestion(q) {
   let bodyHtml = '';
   if (q.type === 'type1-sub') {
     bodyHtml = `
-      <input type="text" id="subInput" class="subjective-input" placeholder="답을 입력하고 Enter">
+      <input type="text" id="subInput" class="subjective-input" placeholder="답을 입력하고 Enter" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false">
       <button id="submitBtn" class="submit-btn">제출</button>
     `;
   } else {
