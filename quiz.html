@@ -732,7 +732,7 @@
     return div.innerHTML;
   }
   function normalizeAns(s) {
-    return String(s).replace(/\s+/g, '').trim();
+    return String(s).replace(/\s+/g, '').trim().toLowerCase();
   }
   // 슬래시(/)로 구분된 복수 정답 처리.
   // 첫 번째가 대표(표시용), 모두 정답으로 인정.
