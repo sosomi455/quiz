@@ -1622,6 +1622,11 @@ start();
   swStatus.textContent = '⏳ 오프라인 확인 중';
   document.body.appendChild(swStatus);
 
+  if (location.protocol === 'file:') {
+    swStatus.textContent = 'ℹ️ 로컬 파일 모드 (오프라인 캐시 비활성)';
+    swStatus.style.background = '#eef3f9';
+    return;
+  }
   if (!('serviceWorker' in navigator)) {
     swStatus.textContent = '❌ 오프라인 미지원';
     swStatus.style.background = '#ffe0e0';

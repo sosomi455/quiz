@@ -25,6 +25,13 @@
     border-radius: 12px;
     padding: 24px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border-left: 8px solid transparent;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .card.is-high-priority {
+    background: #fff8ec;
+    border-left-color: #ff6f00;
+    box-shadow: 0 2px 12px rgba(255,111,0,0.15);
   }
   .header {
     display: flex;
@@ -694,7 +701,7 @@
 <div class="stats">
   <span><strong id="roundProgress">0 / 0</strong> 풀이</span>
   <span class="pool-stats">풀 안 정답 <strong id="correctCount">0</strong> / 오답 <strong id="wrongCount">0</strong></span>
-  <span class="pool-info">(풀 <strong id="poolCount">0</strong>개 / 전체 <strong id="totalCount">0</strong>개 · 숙지 <strong id="masteredCount">0</strong>개 제외)</span>
+  <span class="pool-info" title="전체 = 선택한 단원의 모든 문제(숙지 포함), 풀 = 거기서 숙지·필터를 제외하고 실제 출제되는 문제">(전체 <strong id="totalCount">0</strong>개 / 풀 <strong id="poolCount">0</strong>개 · 숙지 <strong id="masteredCount">0</strong>개 제외)</span>
   <span id="backupIndicator" title="자동 백업 상태">⚠ 자동 백업 미설정</span>
   <button type="button" id="resetDataBtn" title="현재 선택한 단원만 풀이 진행 초기화. 오답 노트·북마크·숙지·문제별 가중치는 유지">초기화</button>
   <button type="button" class="io-btn" id="exportBtn" title="진행상황을 파일로 저장 (단축키: Ctrl+S)">내보내기</button>
@@ -1029,7 +1036,7 @@
     while ((match = regex.exec(cloze)) !== null) {
       result += escapeHtml(cloze.slice(lastIdx, match.index));
       const gi = posToGroup.get(counter);
-      result += `<input type="text" class="multi-blank" data-group-idx="${gi}" name="mb-${Date.now()}-${gi}-${counter}" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false">`;
+      result += `<input type="text" class="multi-blank" data-group-idx="${gi}" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">`;
       counter++;
       lastIdx = regex.lastIndex;
     }
@@ -1233,6 +1240,36 @@
 
   // ===== 상태 (localStorage) =====
   const STORAGE_KEY = 'cosmetics_quiz_v2';
+
+  // ===== 1회성 플래그 자동 복구 =====
+  // backup/quiz_backup.json에서 추출한 북마크/숙지/오답 데이터를 페이지 최초 로드 시
+  // 한 번만 병합. 사이클/lastCycle/weight는 건드리지 않음. 완료 후 마커 저장 → 재실행 방지.
+  (function recoverFlagsOnce() {
+    const RECOVERY_KEY = STORAGE_KEY + '_flag_recovery_v1';
+    if (localStorage.getItem(RECOVERY_KEY)) return;
+    const FLAGS = {"mc-fh9vu3":{"mastered":true,"attempts":2,"correct":2},"mc-1upeodm":{"attempts":2,"correct":2},"mc-rabxy7":{"attempts":1,"correct":1},"mc-pzm2xo":{"mastered":true,"attempts":1,"correct":1},"mc-y2ju61":{"attempts":1,"correct":1},"mc-k0rda2":{"attempts":1,"correct":1},"mc-cnrjty":{"mastered":true,"attempts":1,"correct":1},"mc-k43524":{"attempts":1,"correct":1},"mc-1fue4c1":{"attempts":3,"correct":3},"mc-6gsz60":{"attempts":1,"correct":1},"mc-19sw4xn":{"attempts":2,"correct":1,"wrong":1},"mc-xgqopm":{"attempts":3,"correct":3},"mc-1e3luyx":{"attempts":1,"correct":1},"mc-1m5xxrb":{"attempts":2,"correct":2},"mc-1rjet01":{"attempts":2,"correct":1,"wrong":1},"mc-18oxl4d":{"attempts":1,"correct":1},"mc-pjj8ce":{"attempts":1,"correct":1},"mc-1vyxyqd":{"lastResult":"wrong","attempts":1,"wrong":1},"mc-1s8fgzh":{"attempts":2,"correct":2},"mc-1kfl2sr":{"attempts":2,"correct":1,"wrong":1},"mc-qjcjt9":{"attempts":1,"correct":1},"mc-13323c6":{"attempts":2,"correct":1,"wrong":1},"mc-19034ui":{"attempts":1,"correct":1},"mc-1ei39cr":{"attempts":2,"correct":1,"wrong":1},"mc-1srvlwt":{"attempts":2,"correct":2},"mc-121b0yy":{"mastered":true,"attempts":2,"correct":2},"mc-8m2rzm":{"attempts":2,"correct":2},"mc-1o2iwd1":{"attempts":1,"correct":1},"cz-152flne":{"attempts":2,"correct":2},"mc-6j38ay":{"attempts":1,"correct":1},"mc-pyqktq":{"attempts":2,"correct":2},"mc-1mocn7l":{"attempts":1,"correct":1},"mc-5ilgo9":{"lastResult":"wrong","attempts":1,"wrong":1},"list-176s339":{"attempts":1,"correct":1},"list-128k1l":{"bookmarked":true,"lastResult":"wrong","attempts":1,"wrong":1},"list-1d87d9e":{"bookmarked":true,"lastResult":"dontKnow","attempts":1,"wrong":1},"mc-td4dee":{"mastered":true,"attempts":1,"correct":1},"mc-1ixjn80":{"attempts":1,"correct":1},"mc-qe0ttg":{"attempts":1,"correct":1},"mc-5otblg":{"attempts":1,"correct":1},"mc-1ah9kh2":{"attempts":1,"correct":1},"mc-r0qp2c":{"attempts":1,"correct":1},"mc-1ox9awk":{"mastered":true,"attempts":1,"correct":1},"mc-1asoduf":{"attempts":1,"correct":1},"mc-1aexi2o":{"attempts":1,"correct":1},"mc-1gc6k1e":{"attempts":1,"correct":1},"mc-t534hg":{"attempts":1,"correct":1},"mc-vf813v":{"attempts":1,"correct":1},"mc-6g7in7":{"attempts":1,"correct":1},"mc-10sq9dc":{"attempts":1,"correct":1},"mc-18upde6":{"attempts":1,"correct":1},"mc-139f7pu":{"attempts":1,"correct":1},"mc-167fncf":{"lastResult":"wrong","attempts":1,"wrong":1},"mc-1ihgrfl":{"attempts":1,"correct":1},"mc-1rp47xd":{"attempts":2,"correct":1,"wrong":1},"mc-1yh9owf":{"lastResult":"wrong","attempts":1,"wrong":1},"list-ephusf":{"bookmarked":true,"lastResult":"dontKnow","attempts":1,"wrong":1},"mc-ughodx":{"attempts":1,"correct":1},"mc-k4pn2w":{"mastered":true,"attempts":1,"correct":1},"mc-1t6nfnt":{"mastered":true,"attempts":1,"correct":1},"mc-i10gju":{"mastered":true,"attempts":1,"correct":1},"mc-1yxo59u":{"attempts":1,"correct":1},"mc-1e6giul":{"attempts":1,"correct":1},"mc-18bejqs":{"attempts":1,"correct":1},"mc-hhob6t":{"lastResult":"wrong","attempts":2,"correct":1,"wrong":1},"mc-1e7w4e3":{"attempts":2,"correct":2},"mc-iugfdw":{"lastResult":"wrong","attempts":1,"wrong":1},"mc-hsoo0":{"attempts":2,"correct":2},"mc-zt0pqu":{"lastResult":"wrong","attempts":2,"correct":1,"wrong":1},"mc-j1dgln":{"attempts":1,"correct":1},"mc-qk240c":{"attempts":1,"correct":1},"mc-rpzr4q":{"mastered":true,"attempts":1,"correct":1},"mc-ay4zc8":{"mastered":true,"attempts":1,"correct":1},"mc-970yar":{"attempts":1,"correct":1},"mc-16e2ud1":{"attempts":1,"correct":1},"mc-wd79pm":{"mastered":true,"attempts":1,"correct":1},"mc-18bp4nl":{"mastered":true,"attempts":1,"correct":1},"mc-19fxoa3":{"mastered":true,"attempts":1,"correct":1},"ox-dqw2k7":{"attempts":1,"correct":1},"ox-1dwfl1c":{"attempts":1,"correct":1},"ox-1vwcbzv":{"attempts":1,"correct":1},"mc-1tiievs":{"attempts":1,"correct":1},"mc-pnouy2":{"mastered":true,"attempts":1,"correct":1},"mc-wvgmnm":{"attempts":1,"correct":1},"mc-ux00jy":{"mastered":true,"attempts":1,"correct":1},"mc-8ivl1a":{"attempts":1,"correct":1},"ox-1slahvg":{"attempts":1,"correct":1},"mc-1c9jk1n":{"attempts":1,"correct":1},"mc-1tmeb0v":{"mastered":true,"attempts":1,"correct":1},"mc-1yp9bvd":{"mastered":true,"attempts":1,"correct":1},"mc-1vq5u33":{"lastResult":"wrong","attempts":1,"wrong":1},"mc-a3m3k3":{"bookmarked":true,"lastResult":"wrong","attempts":1,"wrong":1},"ox-180wj1":{"mastered":true,"attempts":1,"correct":1},"cz-16glu58":{"lastResult":"wrong","attempts":1,"wrong":1},"mc-4kupg0":{"mastered":true,"attempts":1,"correct":1},"mc-13cfowx":{"mastered":true,"attempts":1,"correct":1},"cm-a4c42q":{"bookmarked":true,"lastResult":"dontKnow","attempts":1,"wrong":1},"mc-14jfot2":{"attempts":1,"correct":1},"mc-1gaf1i9":{"mastered":true,"attempts":1,"correct":1},"ox-eumf4h":{"lastResult":"wrong","attempts":1,"wrong":1},"list-zrmgql":{"lastResult":"dontKnow","attempts":1,"wrong":1},"mc-zw4mxb":{"attempts":1,"correct":1},"mc-18he4ab":{"attempts":1,"correct":1},"mc-1sid2du":{"attempts":1,"correct":1},"cz-1xi7xgq":{"lastResult":"wrong","attempts":2,"wrong":2},"def-6pmzov":{"attempts":1,"correct":1},"cz-1usr07q":{"lastResult":"wrong","attempts":2,"wrong":2},"def-1hxlwst":{"attempts":2,"correct":1,"wrong":1},"cz-ra0ub8":{"attempts":1,"correct":1},"cz-1cl4mit":{"attempts":1,"correct":1},"cz-uqqtrb":{"attempts":1,"correct":1},"cz-xrc25e":{"bookmarked":true,"lastResult":"wrong","attempts":2,"correct":1,"wrong":1},"cz-vtbosm":{"attempts":2,"correct":2},"cz-x7utv3":{"attempts":1,"correct":1},"cz-11x7v0m":{"attempts":2,"correct":2},"cz-rv1866":{"lastResult":"wrong","attempts":2,"wrong":2},"cz-14d2xtg":{"lastResult":"dontKnow","attempts":3,"wrong":3},"cz-xmxl87":{"attempts":2,"correct":2},"def-1cu25iw":{"attempts":3,"correct":3},"cz-rmif1q":{"lastResult":"wrong","attempts":3,"wrong":3},"def-ddzu2p":{"attempts":1,"correct":1},"def-2kxfbn":{"mastered":true,"attempts":2,"correct":2},"def-1px3yem":{"attempts":1,"correct":1},"def-j3dx5i":{"mastered":true,"attempts":1,"correct":1},"def-12bq45m":{"lastResult":"dontKnow","attempts":2,"wrong":2},"def-cxkfdq":{"attempts":1,"correct":1},"def-1eb4r2t":{"attempts":2,"correct":1,"wrong":1},"def-11nh8hr":{"attempts":2,"correct":2},"def-ptu6ee":{"attempts":2,"correct":2},"cz-eccqw9":{"attempts":1,"correct":1},"cz-1l3azvg":{"attempts":2,"correct":2},"cz-1qbg7ps":{"attempts":1,"correct":1},"cz-v1wr02":{"attempts":1,"correct":1},"cz-1gng64w":{"bookmarked":true,"lastResult":"dontKnow","attempts":2,"wrong":2},"cz-1qmhwno":{"attempts":2,"correct":2},"cz-1vmfb5":{"attempts":2,"correct":2},"def-196issp":{"bookmarked":true,"lastResult":"wrong","attempts":1,"wrong":1},"def-19fz436":{"lastResult":"dontKnow","attempts":1,"wrong":1},"cz-hq0ld8":{"lastResult":"dontKnow","attempts":1,"wrong":1},"def-ppow2w":{"bookmarked":true,"lastResult":"dontKnow","attempts":2,"wrong":2},"def-1n9ux3x":{"lastResult":"dontKnow","attempts":1,"wrong":1},"cz-bwu1zb":{"lastResult":"wrong","attempts":2,"wrong":2},"cz-1lpmkq9":{"lastResult":"wrong","attempts":1,"wrong":1},"cz-1ijrr1x":{"bookmarked":true,"lastResult":"dontKnow","attempts":2,"wrong":2},"cz-anie2o":{"attempts":1,"correct":1},"def-n2ll2p":{"lastResult":"dontKnow","attempts":2,"wrong":2},"cz-1wwtd4j":{"lastResult":"wrong","attempts":2,"wrong":2},"cz-1vyoijm":{"attempts":1,"correct":1},"def-9x5y5k":{"lastResult":"wrong","attempts":1,"wrong":1},"cz-1yr1cxk":{"attempts":2,"correct":1,"wrong":1},"def-1hyesy2":{"bookmarked":true,"lastResult":"wrong","attempts":2,"wrong":2},"def-19uytvg":{"lastResult":"dontKnow","attempts":1,"wrong":1},"def-9o8qjg":{"attempts":1,"correct":1},"def-skifmm":{"bookmarked":true,"lastResult":"wrong","attempts":1,"wrong":1},"def-10h21gb":{"attempts":1,"correct":1},"def-1qomxh0":{"lastResult":"dontKnow","attempts":2,"wrong":2},"def-1rz6k8o":{"lastResult":"dontKnow","attempts":1,"wrong":1},"def-x3i4bo":{"lastResult":"wrong","attempts":1,"wrong":1},"def-30t7a9":{"lastResult":"dontKnow","attempts":1,"wrong":1},"def-1kzq01t":{"attempts":1,"correct":1},"def-1oatxnz":{"attempts":1,"correct":1},"def-8jvrj7":{"attempts":1,"correct":1},"cz-1lmdsw1":{"lastResult":"dontKnow","attempts":1,"wrong":1},"def-19y0aem":{"lastResult":"dontKnow","attempts":1,"wrong":1},"def-1senn75":{"attempts":1,"correct":1},"cz-1e6pii8":{"attempts":1,"correct":1},"cz-1dbdplp":{"lastResult":"dontKnow","attempts":1,"wrong":1},"cz-lq02cy":{"attempts":1,"correct":1},"cz-14yma4v":{"lastResult":"wrong","attempts":1,"wrong":1},"cz-h0g0ks":{"lastResult":"wrong","attempts":1,"wrong":1},"cz-1u86nug":{"lastResult":"wrong","attempts":2,"wrong":2},"cz-7qtngq":{"lastResult":"wrong","attempts":2,"wrong":2},"cz-1om0ue6":{"attempts":1,"correct":1},"cz-1a2w4xc":{"attempts":1,"correct":1},"cz-7fww0h":{"lastResult":"wrong","attempts":1,"wrong":1},"def-fcdo5b":{"attempts":1,"correct":1},"def-113yvzr":{"attempts":1,"correct":1},"def-k9l149":{"mastered":true,"attempts":1,"correct":1},"def-qk588y":{"attempts":1,"correct":1},"def-ys083h":{"attempts":1,"correct":1},"def-1oj7chp":{"attempts":1,"correct":1},"cz-1i93qbr":{"attempts":1,"correct":1},"def-qy35cq":{"attempts":1,"correct":1},"cz-1oa8gem":{"lastResult":"wrong","attempts":1,"wrong":1},"def-1jseog7":{"attempts":1,"correct":1},"cz-1ygpmkd":{"lastResult":"wrong","attempts":1,"wrong":1},"def-126ib5w":{"attempts":1,"correct":1},"cz-ph0p4a":{"attempts":1,"correct":1},"def-1jocmd1":{"attempts":1,"correct":1},"cm-9tyyuu":{"lastResult":"wrong","attempts":1,"wrong":1},"def-1ln8h8o":{"attempts":1,"correct":1},"def-1mgs0ic":{"attempts":1,"correct":1},"def-o6yegf":{"attempts":1,"correct":1},"def-1baa6i4":{"lastResult":"wrong","attempts":1,"wrong":1},"def-1wegjli":{"attempts":1,"correct":1},"cm-1h8516x":{"lastResult":"wrong","attempts":2,"wrong":2},"cm-1yz4zaa":{"bookmarked":true,"lastResult":"wrong","attempts":1,"wrong":1},"cm-1kx6r5m":{"attempts":1,"correct":1},"cm-ql3c0s":{"bookmarked":true,"attempts":1,"correct":1},"cm-1hp4dd5":{"attempts":1,"correct":1},"cm-196issp":{"bookmarked":true,"lastResult":"wrong","attempts":1,"wrong":1},"cm-tsrje2":{"attempts":2,"correct":2},"cm-1mtdy5h":{"lastResult":"wrong","attempts":2,"wrong":2},"cm-1r7ngwo":{"attempts":1,"correct":1},"cm-16zow24":{"attempts":1,"correct":1},"cm-1pl8s5":{"attempts":2,"correct":2},"cm-irtm3s":{"lastResult":"wrong","attempts":1,"wrong":1},"cm-uj7epz":{"attempts":1,"correct":1},"cm-15a3sot":{"lastResult":"wrong","attempts":2,"correct":1,"wrong":1},"cm-5o9fn":{"lastResult":"wrong","attempts":1,"wrong":1},"cm-1unlnl0":{"lastResult":"wrong","attempts":1,"wrong":1},"cm-qgieqm":{"attempts":1,"correct":1},"cm-8ekwhk":{"bookmarked":true,"lastResult":"wrong","attempts":1,"wrong":1},"def-10l4w39":{"lastResult":"wrong","attempts":1,"wrong":1},"def-sncbzc":{"bookmarked":true,"lastResult":"wrong","attempts":1,"wrong":1},"def-1jwgapo":{"lastResult":"wrong","attempts":1,"wrong":1},"def-1rlh61j":{"lastResult":"wrong","attempts":1,"wrong":1},"def-1b82syf":{"bookmarked":true,"lastResult":"wrong","attempts":1,"wrong":1},"def-149bss7":{"lastResult":"wrong","attempts":1,"wrong":1},"def-u8tig7":{"attempts":1,"correct":1},"def-qevp6o":{"lastResult":"dontKnow","attempts":1,"wrong":1},"cm-1uxvq6d":{"lastResult":"wrong","attempts":1,"wrong":1},"def-1oqadz6":{"lastResult":"wrong","attempts":1,"wrong":1},"def-4p04iu":{"attempts":1,"correct":1},"def-h660hc":{"lastResult":"wrong","attempts":1,"wrong":1},"cz-1i4f0qg":{"attempts":1,"correct":1},"cz-jh2qva":{"bookmarked":true,"lastResult":"dontKnow","attempts":1,"wrong":1},"cz-suscms":{"lastResult":"wrong","attempts":1,"wrong":1},"cz-etokjq":{"attempts":1,"correct":1},"cz-1r40gpm":{"attempts":1,"correct":1},"cz-y9aimh":{"lastResult":"wrong","attempts":1,"wrong":1},"cz-dx9mw1":{"lastResult":"wrong","attempts":1,"wrong":1},"def-k3emsl":{"lastResult":"dontKnow","attempts":1,"wrong":1},"def-1re4iar":{"lastResult":"wrong","attempts":1,"wrong":1},"def-yas18g":{"lastResult":"dontKnow","attempts":1,"wrong":1},"cm-u63o58":{"lastResult":"dontKnow","attempts":1,"wrong":1},"cz-fsbapp":{"lastResult":"wrong","attempts":1,"wrong":1},"def-12hr9sw":{"lastResult":"wrong","attempts":1,"wrong":1},"cz-14mxh8x":{"attempts":1,"correct":1},"cm-jjtauf":{"lastResult":"wrong","attempts":1,"wrong":1},"cz-1ibztdj":{"attempts":1,"correct":1},"def-chchsd":{"bookmarked":true,"lastResult":"wrong","attempts":1,"wrong":1},"cz-ywpi4g":{"attempts":1,"correct":1},"def-1vw7gwz":{"attempts":1,"correct":1},"def-1w69w8g":{"lastResult":"wrong","attempts":1,"wrong":1},"cz-1vbqm2q":{"attempts":1,"correct":1},"cz-nod5vo":{"attempts":3,"correct":2,"wrong":1},"cz-f7w4rj":{"attempts":1,"correct":1}};
+    let state;
+    try { state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { state = {}; }
+    if (!state || typeof state !== 'object') state = {};
+    if (!state.questions) state.questions = {};
+    const defaults = { weight: 1, bookmarked: false, attempts: 0, correct: 0, wrong: 0, lastResult: null, mastered: false, lastCycle: 0 };
+    Object.keys(FLAGS).forEach(qid => {
+      const src = FLAGS[qid];
+      const cur = state.questions[qid] || (state.questions[qid] = { ...defaults });
+      if (src.bookmarked && !cur.bookmarked) cur.bookmarked = true;
+      if (src.mastered && !cur.mastered) cur.mastered = true;
+      if ((src.lastResult === 'wrong' || src.lastResult === 'dontKnow') &&
+          cur.lastResult !== 'wrong' && cur.lastResult !== 'dontKnow') {
+        cur.lastResult = src.lastResult;
+      }
+      if (typeof src.attempts === 'number' && src.attempts > (cur.attempts || 0)) cur.attempts = src.attempts;
+      if (typeof src.correct === 'number' && src.correct > (cur.correct || 0)) cur.correct = src.correct;
+      if (typeof src.wrong === 'number' && src.wrong > (cur.wrong || 0)) cur.wrong = src.wrong;
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(RECOVERY_KEY, '1');
+  })();
+
   function loadAppState() {
     let s = null;
     try { s = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch {}
@@ -1444,14 +1481,11 @@
     return appState.cycles[key] || 1;
   }
   // 문제 하나가 '이번 사이클에 이미 풀이된 것으로 간주'되는지.
-  // 기본 큐/카운트 모두에서 제외 — 북마크/오답/숙지/중요(★)는 별도 필터로만 다시 본다.
+  // 사이클 기준만 사용 — 초기화 시 북마크/오답/★도 다시 큐에 들어오도록.
+  // (북마크/오답 기록·★는 데이터로 유지되고, 각 전용 필터에서도 사이클 기준으로 노출)
   function isAlreadySolved(q) {
     const st = getQ(q.id);
-    if ((st.lastCycle || 0) >= chapterCycle(q.chapter)) return true;
-    if (st.bookmarked) return true;
-    if (st.lastResult === 'wrong' || st.lastResult === 'dontKnow') return true;
-    if (q.priority === 'high') return true;
-    return false;
+    return (st.lastCycle || 0) >= chapterCycle(q.chapter);
   }
   function getPool() {
     const chapterSet = new Set(appState.chapters);
@@ -1477,19 +1511,24 @@
     }
     return pool;
   }
-  // 큐 = 풀 안에서 아직 풀지 않은 문제들.
-  // 필터(북마크만/오답만/★만)가 켜져 있으면 '이미 푼' 규칙을 완화 — 의도적 복습이므로.
+  // 단원별 출제 비중 가중. 다른 단원과 함께 선택했을 때만 적용
+  // — 해당 단원 문제가 그만큼 더/덜 자주 뽑히도록 가중치에 곱함.
+  //   (해당 단원만 단독 선택 시엔 효과 없음)
+  //   4단원(맞춤형화장품의 이해): 2.5배, 1단원(화장품법의 이해): 0.5배
+  const CHAPTER_BOOST = { 1: 0.5, 4: 2.5 };
+  function chapterWeightMultiplier(chapter) {
+    const mult = CHAPTER_BOOST[chapter];
+    if (mult == null) return 1;
+    const chs = appState.chapters || [];
+    return chs.includes(chapter) && chs.length > 1 ? mult : 1;
+  }
+  // 큐 = 풀 안에서 이번 사이클에 아직 풀지 않은 문제들.
   function pickQuestion() {
     const pool = getPool();
     if (pool.length === 0) return null;
-    const reviewMode = appState.bookmarkedOnly || appState.wrongOnly || appState.highOnly;
-    const candidates = reviewMode
-      // 복습 모드: 이번 사이클에 안 푼 것만 (북마크/오답/★ 규칙 미적용)
-      ? pool.filter(q => (getQ(q.id).lastCycle || 0) < chapterCycle(q.chapter))
-      // 기본 모드: 북마크/오답/★/이번 사이클 풀이 모두 제외
-      : pool.filter(q => !isAlreadySolved(q));
+    const candidates = pool.filter(q => !isAlreadySolved(q));
     if (candidates.length === 0) return null;
-    const weights = candidates.map(q => getQ(q.id).weight);
+    const weights = candidates.map(q => getQ(q.id).weight * chapterWeightMultiplier(q.chapter));
     const total = weights.reduce((a, b) => a + b, 0);
     let r = Math.random() * total;
     for (let i = 0; i < candidates.length; i++) {
@@ -1574,6 +1613,7 @@
   const dontKnowBtn = document.getElementById('dontKnowBtn');
   const resultDiv = document.getElementById('result');
   const bookmarkBtn = document.getElementById('bookmarkBtn');
+  const questionCardEl = document.querySelector('.card');
   const masterBtn = document.getElementById('masterBtn');
   const undoBtn = document.getElementById('undoBtn');
   const bookmarkedOnlyEl = document.getElementById('bookmarkedOnly');
@@ -1630,6 +1670,79 @@
     toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2500);
   }
 
+  // iOS Safari가 Tab/포커스 변경 시 이전 칸 내용을 새 칸에 주입하는 문제 가드.
+  // 원인 후보: QuickType, 한국어 IME composition leak, form-autofill 등.
+  // 다층 방어:
+  //  (1) 사용자가 실제 친 값을 _userValue 에 추적 → 포커스 시점에 그 값으로 강제 복구
+  //  (2) 포커스 직후 짧게 readonly 잠금 + 다단계 체크포인트(rAF, 50ms, 200ms)에서 재복구
+  //  (3) 포커스 이동 시 보이지 않는 IME 트랩 input 을 한 번 거쳐 IME 상태를 흡수
+  const _focusedAt = new WeakMap();
+  const _userValue = new WeakMap();
+
+  function attachAutofillGuard(inp) {
+    _userValue.set(inp, inp.value || '');
+    inp.addEventListener('focus', () => {
+      if (inp.hasAttribute('readonly')) return;
+      _focusedAt.set(inp, performance.now());
+      const expected = _userValue.get(inp) || '';
+      if (inp.value !== expected) inp.value = expected;
+      inp.setAttribute('readonly', '');
+      const restore = () => {
+        const e = _userValue.get(inp) || '';
+        if (inp.value !== e) inp.value = e;
+      };
+      requestAnimationFrame(() => {
+        inp.removeAttribute('readonly');
+        restore();
+      });
+      setTimeout(restore, 50);
+      setTimeout(restore, 200);
+    });
+    inp.addEventListener('input', (e) => {
+      if (inGuardWindow(inp)) return;
+      if (e.isComposing) return;
+      _userValue.set(inp, inp.value);
+    });
+    inp.addEventListener('compositionend', () => {
+      _userValue.set(inp, inp.value);
+    });
+  }
+
+  function inGuardWindow(inp) {
+    const t = _focusedAt.get(inp);
+    return t != null && performance.now() - t < 70;
+  }
+
+  // 보이지 않는 IME 트랩 input — 포커스 이동 사이에 끼워 넣어 진행 중인
+  // IME composition 이나 자동완성 후보를 흡수/폐기.
+  let _imeTrap = null;
+  function getImeTrap() {
+    if (_imeTrap && document.body.contains(_imeTrap)) return _imeTrap;
+    _imeTrap = document.createElement('input');
+    _imeTrap.type = 'text';
+    _imeTrap.setAttribute('aria-hidden', 'true');
+    _imeTrap.setAttribute('autocomplete', 'off');
+    _imeTrap.tabIndex = -1;
+    _imeTrap.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0;margin:0;z-index:-1;';
+    document.body.appendChild(_imeTrap);
+    return _imeTrap;
+  }
+
+  // 포커스 이동: from blur → IME trap focus(컴포지션 흡수) → 다음 프레임에 to focus.
+  function moveFocusSafely(from, to) {
+    if (!to) return false;
+    const trap = getImeTrap();
+    from.blur();
+    trap.value = '';
+    trap.focus({ preventScroll: true });
+    requestAnimationFrame(() => {
+      trap.value = '';
+      trap.blur();
+      to.focus({ preventScroll: true });
+    });
+    return true;
+  }
+
   // ===== 답안 영역 렌더링 (문제 유형별) =====
   function renderAnswerArea(q) {
     answerArea.innerHTML = '';
@@ -1649,20 +1762,31 @@
       answerArea.innerHTML = '<div class="list-hint">문장 안 빈칸을 모두 채우세요 (Enter로 다음 칸 이동)</div>';
       const inputs = questionText.querySelectorAll('input.multi-blank');
       inputs.forEach((inp, i) => {
+        attachAutofillGuard(inp);
         inp.addEventListener('keydown', e => {
           if (e.key === 'Enter' && !e.isComposing) {
             e.preventDefault();
             const next = inputs[i + 1];
-            if (next) next.focus();
+            if (next) moveFocusSafely(inp, next);
             else handleSubmit();
+          } else if (e.key === 'Tab' && !e.altKey && !e.ctrlKey && !e.metaKey) {
+            const next = e.shiftKey ? inputs[i - 1] : inputs[i + 1];
+            if (next) {
+              e.preventDefault();
+              moveFocusSafely(inp, next);
+            }
           }
         });
-        // 같은 그룹(반복 빈칸)이면 동시 입력 동기화
+        // 같은 그룹(반복 빈칸)이면 동시 입력 동기화 (autofill 가드 중에는 스킵).
+        // 동기화로 다른 칸에 쓴 값도 _userValue 에 반영해서, 그 칸에 포커스 들어왔을 때
+        // 동기화된 값이 사라지지 않도록 한다.
         inp.addEventListener('input', () => {
+          if (inGuardWindow(inp)) return;
           const gi = inp.dataset.groupIdx;
           inputs.forEach(other => {
             if (other !== inp && other.dataset.groupIdx === gi) {
               other.value = inp.value;
+              _userValue.set(other, inp.value);
             }
           });
         });
@@ -1672,18 +1796,25 @@
       const n = q.answer.length;
       let html = '<div class="list-inputs">';
       for (let i = 0; i < n; i++) {
-        html += `<div class="list-input-row"><span class="num">${i+1}.</span><input type="text" class="list-input" data-idx="${i}" name="li-${Date.now()}-${i}" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false"></div>`;
+        html += `<div class="list-input-row"><span class="num">${i+1}.</span><input type="text" class="list-input" data-idx="${i}" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"></div>`;
       }
       html += '</div>';
       answerArea.innerHTML = html;
       const inputs = answerArea.querySelectorAll('.list-input');
       inputs.forEach((inp, i) => {
+        attachAutofillGuard(inp);
         inp.addEventListener('keydown', e => {
           if (e.key === 'Enter' && !e.isComposing) {
             e.preventDefault();
             const next = inputs[i + 1];
-            if (next) next.focus();
+            if (next) moveFocusSafely(inp, next);
             else handleSubmit();
+          } else if (e.key === 'Tab' && !e.altKey && !e.ctrlKey && !e.metaKey) {
+            const next = e.shiftKey ? inputs[i - 1] : inputs[i + 1];
+            if (next) {
+              e.preventDefault();
+              moveFocusSafely(inp, next);
+            }
           }
         });
       });
@@ -2017,6 +2148,7 @@
       masterBtn.style.display = 'none';
       undoBtn.style.display = 'none';
       priorityBadgeEl.style.display = 'none';
+      questionCardEl.classList.remove('is-high-priority');
       updateStats();
       return;
     }
@@ -2038,6 +2170,7 @@
       masterBtn.style.display = 'none';
       undoBtn.style.display = 'none';
       priorityBadgeEl.style.display = 'none';
+      questionCardEl.classList.remove('is-high-priority');
       updateStats();
       return;
     }
@@ -2064,6 +2197,7 @@
     } else {
       priorityBadgeEl.style.display = 'none';
     }
+    questionCardEl.classList.toggle('is-high-priority', currentQ.priority === 'high');
     questionText.innerHTML = currentQ.promptHtml;
 
     const q = getQ(currentQ.id);
@@ -2103,25 +2237,25 @@
 
   function updateStats() {
     const pool = getPool();
-    const reviewMode = appState.bookmarkedOnly || appState.wrongOnly || appState.highOnly;
     let answered = 0, correct = 0, wrong = 0;
     pool.forEach(q => {
       const st = getQ(q.id);
-      // 카운트도 큐와 동일 규칙으로 — 복습 모드에선 사이클 기준만, 기본 모드에선 isAlreadySolved 기준.
-      const done = reviewMode
-        ? (st.lastCycle || 0) >= chapterCycle(q.chapter)
-        : isAlreadySolved(q);
-      if (done) answered++;
+      if (isAlreadySolved(q)) answered++;
       if (st.lastResult === 'correct') correct++;
       else if (st.lastResult === 'wrong' || st.lastResult === 'dontKnow') wrong++;
     });
     document.getElementById('roundProgress').textContent = `${answered} / ${pool.length}`;
     document.getElementById('correctCount').textContent = correct;
     document.getElementById('wrongCount').textContent = wrong;
+    // 전체·숙지는 "선택한 단원" 기준 (풀과 달리 숙지·필터 제외 전)
+    const chapterSet = new Set(appState.chapters);
+    const selectedQs = allQuestions.filter(q =>
+      q.chapter == null || chapterSet.has(q.chapter)
+    );
     document.getElementById('poolCount').textContent = pool.length;
-    document.getElementById('totalCount').textContent = allQuestions.length;
+    document.getElementById('totalCount').textContent = selectedQs.length;
     document.getElementById('masteredCount').textContent =
-      allQuestions.filter(q => getQ(q.id).mastered).length;
+      selectedQs.filter(q => getQ(q.id).mastered).length;
   }
 
   function updateWrongList() {
@@ -2237,24 +2371,33 @@
       return;
     }
     const typeLabel = { def: '정의→용어', cloze: '빈칸', 'cloze-multi': '종합빈칸', list: '나열', mc: '객관식', ox: 'OX' };
-    list.innerHTML = mastered.map(q => {
-      const chapLabel = q.chapter != null && CHAPTERS[q.chapter]
-        ? `${q.chapter}단원 · ${CHAPTERS[q.chapter]}`
-        : '미분류';
-      const ansStr = Array.isArray(q.answer)
-        ? q.answer.map(formatAccepted).join(', ')
-        : formatAccepted(q.answer);
-      const priorityTag = q.priority === 'high' ? ' · <span class="priority-badge priority-high" style="font-size:0.8em;padding:1px 5px">★ 중요</span>'
-                        : q.priority === 'low'  ? ' · <span class="priority-badge priority-low" style="font-size:0.8em;padding:1px 5px">＃ 포기 가능</span>'
-                        : '';
-      return `
-        <div class="review-item">
-          <button class="review-unbook" data-id="${q.id}" title="숙지 해제 — 풀에 다시 등장">✕ 해제</button>
-          <div class="review-meta">${escapeHtml(chapLabel)} · ${typeLabel[q.type] || q.type}${priorityTag}</div>
-          <div class="review-q">${q.promptHtml}</div>
-          <div class="review-a">→ ${escapeHtml(ansStr)}</div>
-        </div>
-      `;
+    const byChapter = new Map();
+    mastered.forEach(q => {
+      const k = q.chapter != null && CHAPTERS[q.chapter] ? q.chapter : -1;
+      if (!byChapter.has(k)) byChapter.set(k, []);
+      byChapter.get(k).push(q);
+    });
+    const chapterKeys = [...byChapter.keys()].sort((a, b) => a - b);
+    list.innerHTML = chapterKeys.map(k => {
+      const chapName = k === -1 ? '미분류' : `${k}. ${CHAPTERS[k]}`;
+      const items = byChapter.get(k);
+      const itemsHtml = items.map(q => {
+        const ansStr = Array.isArray(q.answer)
+          ? q.answer.map(formatAccepted).join(', ')
+          : formatAccepted(q.answer);
+        const priorityTag = q.priority === 'high' ? ' · <span class="priority-badge priority-high" style="font-size:0.8em;padding:1px 5px">★ 중요</span>'
+                          : q.priority === 'low'  ? ' · <span class="priority-badge priority-low" style="font-size:0.8em;padding:1px 5px">＃ 포기 가능</span>'
+                          : '';
+        return `
+          <div class="review-item">
+            <button class="review-unbook" data-id="${q.id}" title="숙지 해제 — 풀에 다시 등장">✕ 해제</button>
+            <div class="review-meta">${typeLabel[q.type] || q.type}${priorityTag}</div>
+            <div class="review-q">${q.promptHtml}</div>
+            <div class="review-a">→ ${escapeHtml(ansStr)}</div>
+          </div>
+        `;
+      }).join('');
+      return `<details class="chapter-group"><summary>${escapeHtml(chapName)} (${items.length})</summary>${itemsHtml}</details>`;
     }).join('');
     list.querySelectorAll('.review-unbook').forEach(btn => {
       btn.addEventListener('click', e => {
@@ -2607,6 +2750,11 @@
     swStatus.textContent = '⏳ 오프라인 확인 중';
     document.body.appendChild(swStatus);
 
+    if (location.protocol === 'file:') {
+      swStatus.textContent = 'ℹ️ 로컬 파일 모드 (오프라인 캐시 비활성)';
+      swStatus.style.background = '#eef3f9';
+      return;
+    }
     if (!('serviceWorker' in navigator)) {
       swStatus.textContent = '❌ 오프라인 미지원';
       swStatus.style.background = '#ffe0e0';
