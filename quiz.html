@@ -381,6 +381,9 @@
   .stats strong { color: #1976d2; }
   .stats .pool-stats { font-weight: 600; }
   .stats .pool-stats strong { color: #1976d2; font-size: 1.05em; }
+  .stats .round-stats { font-weight: 600; }
+  .stats .round-stats strong { color: #2e7d32; font-size: 1.05em; }
+  .stats .round-rate { color: #2e7d32; font-weight: 600; }
   .stats .pool-info { color: #999; font-size: 0.92em; font-weight: 400; }
   .stats .pool-info strong { color: #777; font-weight: 600; }
   .filter-section {
@@ -719,7 +722,8 @@
 
 <div class="stats">
   <span><strong id="roundProgress">0 / 0</strong> 풀이</span>
-  <span class="pool-stats">풀 안 정답 <strong id="correctCount">0</strong> / 오답 <strong id="wrongCount">0</strong></span>
+  <span class="round-stats" title="이번 라운드(초기화 후 새로 푼 문제)에서의 정답/오답. 이전 라운드 결과는 빼고 계산합니다.">이번 라운드 정답 <strong id="roundCorrect">0</strong> / 오답 <strong id="roundWrong">0</strong> <span id="roundRate" class="round-rate"></span></span>
+  <span class="pool-stats" title="풀 안 각 문제의 가장 최근 결과 기준 누적 집계(초기화해도 이전 결과 유지)">풀 안 정답 <strong id="correctCount">0</strong> / 오답 <strong id="wrongCount">0</strong></span>
   <span class="pool-info" title="전체 = 선택한 단원의 모든 문제(숙지 포함), 풀 = 거기서 숙지·필터를 제외하고 실제 출제되는 문제">(전체 <strong id="totalCount">0</strong>개 / 풀 <strong id="poolCount">0</strong>개 · 숙지 <strong id="masteredCount">0</strong>개 제외)</span>
   <span id="backupIndicator" title="자동 백업 상태">⚠ 자동 백업 미설정</span>
   <button type="button" id="resetDataBtn" title="현재 선택한 단원만 풀이 진행 초기화. 오답 노트·북마크·숙지·문제별 가중치는 유지">초기화</button>
@@ -2651,16 +2655,27 @@
 
   function updateStats() {
     const pool = getPool();
-    let answered = 0, correct = 0, wrong = 0;
+    let answered = 0, correct = 0, wrong = 0, roundCorrect = 0, roundWrong = 0;
     pool.forEach(q => {
       const st = getQ(q.id);
-      if (isAlreadySolved(q)) answered++;
+      const solvedThisRound = isAlreadySolved(q);
+      if (solvedThisRound) answered++;
       if (st.lastResult === 'correct') correct++;
       else if (st.lastResult === 'wrong' || st.lastResult === 'dontKnow') wrong++;
+      // 이번 라운드(현재 사이클) 안에서 실제로 푼 문제만 집계.
+      if (solvedThisRound) {
+        if (st.lastResult === 'correct') roundCorrect++;
+        else if (st.lastResult === 'wrong' || st.lastResult === 'dontKnow') roundWrong++;
+      }
     });
     document.getElementById('roundProgress').textContent = `${answered} / ${pool.length}`;
     document.getElementById('correctCount').textContent = correct;
     document.getElementById('wrongCount').textContent = wrong;
+    document.getElementById('roundCorrect').textContent = roundCorrect;
+    document.getElementById('roundWrong').textContent = roundWrong;
+    const roundDone = roundCorrect + roundWrong;
+    document.getElementById('roundRate').textContent =
+      roundDone > 0 ? `(정답률 ${Math.round((roundCorrect / roundDone) * 100)}%)` : '';
     // 전체·숙지는 "선택한 단원" 기준 (풀과 달리 숙지·필터 제외 전)
     const chapterSet = new Set(appState.chapters);
     const selectedQs = allQuestions.filter(q =>
