@@ -199,11 +199,30 @@
     text-align: left;
     transition: background 0.1s, border-color 0.1s;
     word-break: keep-all;
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
+  .choice .num-key {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: #2e7d4a;
+    color: #fff;
+    font-size: 0.82em;
+    font-weight: 700;
+  }
+  .choice .choice-text { flex: 1 1 auto; }
   .choice:hover:not(:disabled) {
     background: #e8f5ec;
     border-color: #2e7d4a;
   }
+  .choice.correct .num-key { background: #1b5e20; }
+  .choice.wrong .num-key { background: #c62828; }
   .choice:disabled { cursor: default; }
   .choice.correct {
     background: #c8e6c9;
@@ -471,13 +490,14 @@
         <tr><td><kbd>Esc</kbd></td><td>되돌리기 (제출 후)</td></tr>
         <tr><td><kbd>*</kbd></td><td>북마크 토글</td></tr>
         <tr><td><kbd>+</kbd></td><td>숙지 토글 (정답 시)</td></tr>
+        <tr><td><kbd>-</kbd></td><td>오답에서 빼기 (복습 모드)</td></tr>
         <tr><td><kbd>1</kbd>~<kbd>5</kbd></td><td>객관식 보기 선택</td></tr>
         <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>진행상황 내보내기 (파일 저장)</td></tr>
       </table>
     </div>
   </div>
 
-  <div class="filter-bar">
+  <div class="filter-bar" id="filterBar">
     <label><input type="checkbox" id="filterType1"> 유형1 (원료→속성)</label>
     <label><input type="checkbox" id="filterType2"> 유형2 (속성→원료)</label>
     <label><input type="checkbox" id="filterWrong"> 틀린 문제만</label>
@@ -486,18 +506,34 @@
     <label><input type="checkbox" id="filterLowExclude" checked> ＃ 포기 가능 포함</label>
   </div>
 
+  <div id="reviewEntryRow" style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap;">
+    <button type="button" id="reviewStartBtn" class="io-btn" style="background:#5e35b1;color:#fff;border-color:#5e35b1;">
+      📕 오답 집중 복습 (<span id="reviewAvail">0</span>)
+    </button>
+    <button type="button" id="superReviewStartBtn" class="io-btn" style="background:#c62828;color:#fff;border-color:#c62828;">
+      🔥 슈퍼오답 복습 (<span id="superAvail">0</span>)
+    </button>
+  </div>
+
+  <div id="reviewBar" style="display:none;margin:10px 0;padding:12px 14px;border-radius:10px;background:#ede7f6;border:1px solid #b39ddb;">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span id="reviewModeBadge" style="font-weight:700;color:#4527a0;background:#d1c4e9;padding:2px 8px;border-radius:6px;">📕 오답 복습</span>
+      <button id="reviewDumpBtn" style="margin-left:auto;padding:4px 10px;border:1px solid #ef9a9a;background:#fff;border-radius:6px;cursor:pointer;color:#c62828;" title="아직 못 외운(정복 안 된) 남은 문제를 슈퍼오답 노트에 넣고 복습을 끝냅니다">🔥 남은 문제 슈퍼오답으로</button>
+      <button id="reviewEndBtn" style="padding:4px 10px;border:1px solid #b39ddb;background:#fff;border-radius:6px;cursor:pointer;color:#4527a0;">복습 종료</button>
+    </div>
+    <div id="reviewProgress" style="margin-top:8px;font-size:0.92em;color:#311b92;line-height:1.6;"></div>
+  </div>
+
   <div id="quizArea"></div>
 
   <div class="stats">
-    <span>전체 <b id="statPool">0</b>문제</span>
-    <span>1회독 <b id="statSeen1">0</b></span>
-    <span>2회독 <b id="statSeen2">0</b></span>
+    <span>전체 <b id="statPool">0</b>세트</span>
+    <span>푼 <b id="statSolved">0</b></span>
     <span style="color:#c8dccf">|</span>
     <span>정답 <b id="statCorrect">0</b></span>
     <span>오답 <b id="statWrong">0</b></span>
     <span>북마크 <b id="statBookmark">0</b></span>
     <span>숙지 <b id="statMaster">0</b> (풀 제외)</span>
-    <span>누적 출제 <b id="statTotal">0</b></span>
     <span id="backupIndicator" title="자동 백업 상태">⚠ 자동 백업 미설정</span>
     <button id="resetBtn" title="진행상황만 초기화 (북마크·오답·숙지는 유지)">진행상황 초기화</button>
     <button class="io-btn" id="exportBtn" title="진행상황을 파일로 저장 (단축키: Ctrl+S)">내보내기</button>
@@ -507,7 +543,14 @@
 
   <details>
     <summary>오답 목록 (<span id="wrongCount">0</span>)</summary>
+    <div style="font-size:0.8em;color:#666;padding:8px 2px 4px;">한 번이라도 틀리면 계속 누적됩니다. 정답을 맞혀도 자동으로 안 빠지고, "제거"로만 뺄 수 있어요.</div>
     <div class="review-list" id="wrongList"></div>
+  </details>
+
+  <details>
+    <summary>🔥 슈퍼오답 목록 (<span id="superWrongCount">0</span>)</summary>
+    <div style="font-size:0.8em;color:#666;padding:8px 2px 4px;">오답 복습 중 <strong>🔥 남은 문제 슈퍼오답으로</strong> 버튼으로 모입니다. "해제"로 제거.</div>
+    <div class="review-list" id="superWrongList"></div>
   </details>
 
   <details>
@@ -536,6 +579,27 @@ function extractPriority(str) {
   if (s.endsWith('★')) return { text: s.slice(0, -1).trimEnd(), priority: 'high' };
   if (s.endsWith('＃')) return { text: s.slice(0, -1).trimEnd(), priority: 'low' };
   return { text: s, priority: null };
+}
+// 슬래시(/)로 구분된 복수 답. 첫 번째가 대표(표시용), 모두 정답 인정.
+// 이중 슬래시(//)는 구분자가 아니라 리터럴 "/"로 처리.
+function splitAlts(s) {
+  return String(s)
+    .replace(/\/\//g, '\x00')
+    .split('/')
+    .map(p => p.replace(/\x00/g, '/').trim())
+    .filter(Boolean);
+}
+function canonicalName(s) {
+  return splitAlts(s)[0] || String(s).trim();
+}
+function formatAccepted(alts) {
+  if (!alts || alts.length <= 1) return (alts && alts[0]) || '';
+  return `${alts[0]} (또는 ${alts.slice(1).join(', ')})`;
+}
+// 속성 이름(canonical)에 대한 인정 답 목록. 없으면 이름 자체.
+function getAttrAccepted(name) {
+  const a = data.attributes.find(x => x.name === name);
+  return (a && a.accepted && a.accepted.length) ? a.accepted : [name];
 }
 
 function parseData(text) {
@@ -581,7 +645,9 @@ function parseData(text) {
       }
       // extract priority from category name
       const { text: cleanName, priority: attrPriority } = extractPriority(name);
-      name = cleanName;
+      // 복수정답: "속성 / 별칭" → 대표(canonical)를 이름으로, 전체를 인정 목록으로.
+      const accepted = splitAlts(cleanName);
+      name = accepted[0] || cleanName;
       if (!name) continue;
 
       const existing = attributes.find(a => a.name === name);
@@ -590,13 +656,16 @@ function parseData(text) {
         if (subjective) currentAttr.subjective = true;
         if (attrPriority && !currentAttr.priority) currentAttr.priority = attrPriority;
         if (currentGroup && !existing.group) existing.group = currentGroup;
+        // 인정 답 병합 (중복 없이)
+        for (const alt of accepted) if (!currentAttr.accepted.includes(alt)) currentAttr.accepted.push(alt);
       } else {
-        currentAttr = { name, subjective, priority: attrPriority, group: currentGroup, ingredients: [] };
+        currentAttr = { name, accepted: accepted.length ? accepted : [name], subjective, priority: attrPriority, group: currentGroup, ingredients: [] };
         attributes.push(currentAttr);
       }
     } else {
       if (!currentAttr) continue;
       // extract priority from ingredient name
+      // 원료명은 '/'를 리터럴로 둠 (예: "코카마이드MEA/DEA"는 한 원료). '/' 복수정답은 속성명에만 적용.
       const { text: ingName, priority: ingPriority } = extractPriority(line);
       if (currentAttr.ingredients.includes(ingName)) continue;
       currentAttr.ingredients.push(ingName);
@@ -641,18 +710,29 @@ function loadState() {
       for (const id of (s.wrongSet || [])) seenCounts[id] = Math.max(seenCounts[id] || 0, 1);
       for (const id of (s.masterSet || [])) seenCounts[id] = Math.max(seenCounts[id] || 0, 1);
     }
+    // 문제별 최근 결과(이번 회독): id -> true(정답)/false(오답). "푼/정답/오답" 진행률 계산용.
+    let progressResult = (s.progressResult && typeof s.progressResult === 'object') ? s.progressResult : {};
+    // v2 진행률 도입 시 1회: 진행상황(회독/카운트)만 초기화. 오답·북마크·숙지·슈퍼오답은 유지.
+    if (!s.progressV2Reset) {
+      seenCounts = {};
+      progressResult = {};
+      s.correct = 0; s.wrong = 0; s.total = 0;
+    }
     return {
       correct: s.correct || 0,
       wrong: s.wrong || 0,
       total: s.total || 0,
       wrongSet: new Set(s.wrongSet || []),
+      superWrongSet: new Set(s.superWrongSet || []),
       bookmarkSet: new Set(s.bookmarkSet || []),
       masterSet: new Set(s.masterSet || []),
       seenCounts,
-      filters
+      progressResult,
+      filters,
+      review: (s.review && typeof s.review === 'object') ? s.review : null,
     };
   } catch {
-    return { correct: 0, wrong: 0, total: 0, wrongSet: new Set(), bookmarkSet: new Set(), masterSet: new Set(), seenCounts: {}, filters: { includeLow: true } };
+    return { correct: 0, wrong: 0, total: 0, wrongSet: new Set(), superWrongSet: new Set(), bookmarkSet: new Set(), masterSet: new Set(), seenCounts: {}, progressResult: {}, filters: { includeLow: true }, review: null };
   }
 }
 function saveState() {
@@ -661,11 +741,15 @@ function saveState() {
     wrong: state.wrong,
     total: state.total,
     wrongSet: [...state.wrongSet],
+    superWrongSet: [...state.superWrongSet],
     bookmarkSet: [...state.bookmarkSet],
     masterSet: [...state.masterSet],
     seenCounts: state.seenCounts,
+    progressResult: state.progressResult,
     seenMigrated: true,
-    filters: state.filters
+    progressV2Reset: true,
+    filters: state.filters,
+    review: state.review,
   }));
   rotateSnapshot();
 }
@@ -896,7 +980,10 @@ function generateQuestion() {
   const windowSize = Math.max(1, Math.floor(pool.length * 0.6));
   const recentWindow = recentIds.slice(-windowSize);
   const freshPool = pool.filter(id => !recentWindow.includes(id));
-  const pickedId = pickRandom(freshPool.length > 0 ? freshPool : pool);
+  const candidates = freshPool.length > 0 ? freshPool : pool;
+  // 아직 안 푼(정답/오답 기록 없는) 문제를 우선 출제 → 모든 세트를 골고루 돌게 함.
+  const unsolved = candidates.filter(id => !(id in state.progressResult));
+  const pickedId = pickRandom(unsolved.length > 0 ? unsolved : candidates);
 
   recentIds.push(pickedId);
   if (recentIds.length > 60) recentIds = recentIds.slice(-60);
@@ -1023,7 +1110,7 @@ function renderQuestion(q) {
     `;
   } else {
     bodyHtml = `<div class="choices">${
-      q.choices.map((c, i) => `<button class="choice" data-idx="${i}">${escapeHtml(c)}</button>`).join('')
+      q.choices.map((c, i) => `<button class="choice" data-idx="${i}"><span class="num-key">${i + 1}</span><span class="choice-text">${escapeHtml(c)}</span></button>`).join('')
     }</div>`;
   }
 
@@ -1050,7 +1137,7 @@ function renderQuestion(q) {
 
   document.getElementById('bookmarkBtn').addEventListener('click', toggleBookmark);
   document.getElementById('dontKnowBtn').addEventListener('click', onDontKnow);
-  document.getElementById('skipBtn').addEventListener('click', () => { if (!answered) nextQuestion(); });
+  document.getElementById('skipBtn').addEventListener('click', () => { if (!answered) { reviewActive() ? skipReview() : nextQuestion(); } });
 
   if (q.type === 'type1-sub') {
     const input = document.getElementById('subInput');
@@ -1106,7 +1193,9 @@ function submitSubjective() {
 
   const q = currentQuestion;
   const norm = s => s.replace(/\s+/g, '').toLowerCase();
-  const isCorrect = q.answers.some(a => norm(a) === norm(userVal));
+  // 각 정답 속성의 복수표기(/ 별칭)까지 모두 인정.
+  const accepted = q.answers.flatMap(getAttrAccepted);
+  const isCorrect = accepted.some(a => norm(a) === norm(userVal));
   finalize(isCorrect);
 }
 
@@ -1130,34 +1219,49 @@ function onDontKnow() {
 
 function finalize(isCorrect) {
   const q = currentQuestion;
-  // 되돌리기용 스냅샷 (상태 변경 직전)
-  lastSnapshot = {
-    qRef: q,
-    stateBefore: {
-      correct: state.correct,
-      wrong: state.wrong,
-      total: state.total,
-      wasInWrongSet: state.wrongSet.has(q.id),
-      seenCountBefore: state.seenCounts[q.id] || 0,
-    }
-  };
-  state.total++;
-  state.seenCounts[q.id] = (state.seenCounts[q.id] || 0) + 1;
-  if (isCorrect) {
-    state.correct++;
-    state.wrongSet.delete(q.id);
+  if (reviewActive()) {
+    // 복습 모드: 전역 상태(정오답/오답세트/회독)는 건드리지 않고 세션에만 반영.
+    reviewRecord(isCorrect);
+    noteAnswerSubmitted();
+    renderReviewHUD();
   } else {
-    state.wrong++;
-    state.wrongSet.add(q.id);
+    // 되돌리기용 스냅샷 (상태 변경 직전)
+    lastSnapshot = {
+      qRef: q,
+      stateBefore: {
+        correct: state.correct,
+        wrong: state.wrong,
+        total: state.total,
+        wasInWrongSet: state.wrongSet.has(q.id),
+        seenCountBefore: state.seenCounts[q.id] || 0,
+        progressResultBefore: (q.id in state.progressResult) ? state.progressResult[q.id] : undefined,
+      }
+    };
+    state.total++;
+    state.seenCounts[q.id] = (state.seenCounts[q.id] || 0) + 1;
+    // 진행률용: 이 문제의 최근 결과 기록 (다시 풀면 갱신됨)
+    state.progressResult[q.id] = isCorrect;
+    if (isCorrect) {
+      state.correct++;
+      // 누적 오답: 정답을 맞혀도 오답 목록에서 자동으로 빼지 않음 (목록의 "제거"로만 뺌).
+    } else {
+      state.wrong++;
+      state.wrongSet.add(q.id);
+    }
+    saveState();
+    noteAnswerSubmitted();
+    updateStats();
   }
-  saveState();
-  noteAnswerSubmitted();
-  updateStats();
+  renderResultAndActions(isCorrect);
+}
 
+// 결과 박스 + 액션 버튼(다음/숙지 or 빼기/되돌리기) 렌더 — 일반·복습 공용.
+function renderResultAndActions(isCorrect) {
+  const q = currentQuestion;
   const resultBox = document.getElementById('resultBox');
   let answerText;
   if (q.type === 'type1-sub') {
-    answerText = q.answers.join(', ');
+    answerText = q.answers.map(a => formatAccepted(getAttrAccepted(a))).join(', ');
   } else if (q.type === 'type1') {
     answerText = q.answer + (q.allAnswers.length > 1 ? ' (전체: ' + q.allAnswers.join(', ') + ')' : '');
   } else {
@@ -1172,22 +1276,38 @@ function finalize(isCorrect) {
 
   const actions = document.querySelector('.actions');
   let actionsHtml = `<button class="next-btn" id="nextBtn">다음 (Enter)</button>`;
-  // 정답 맞췄을 때만 숙지 버튼 노출
-  if (isCorrect) {
+  if (reviewActive()) {
+    const sup = reviewSource() === 'super';
+    actionsHtml += `<button id="reviewRemoveBtn" title="이 문제를 ${sup ? '슈퍼오답' : '오답'} 목록에서 빼고 복습에서도 제외 (단축키: -)">🗑 ${sup ? '슈퍼오답' : '오답'}에서 빼기 (-)</button>`;
+  } else if (isCorrect) {
+    // 정답 맞췄을 때만 숙지 버튼 노출 (복습 모드에선 숨김)
     const isMastered = state.masterSet.has(q.id);
     actionsHtml += `<button class="master-btn ${isMastered ? 'active' : ''}" id="masterBtn" title="확실히 외운 문제 — 이후 풀에서 제외됨">${isMastered ? '✓ 숙지됨 (+)' : '✓ 숙지 (+)'}</button>`;
   }
-  actionsHtml += `<button id="undoBtn" title="방금 제출을 취소하고 답 입력으로 되돌림 (정·오답 카운트도 복원)">↶ 되돌리기 (Esc)</button>`;
+  actionsHtml += `<button id="undoBtn" title="방금 제출을 취소하고 답 입력으로 되돌림">↶ 되돌리기 (Esc)</button>`;
   actions.innerHTML = actionsHtml;
   document.getElementById('nextBtn').addEventListener('click', nextQuestion);
   const mBtn = document.getElementById('masterBtn');
   if (mBtn) mBtn.addEventListener('click', toggleMaster);
+  const rmBtn = document.getElementById('reviewRemoveBtn');
+  if (rmBtn) rmBtn.addEventListener('click', reviewRemoveCurrent);
   document.getElementById('undoBtn').addEventListener('click', undoSubmission);
 }
 
 function undoSubmission() {
   if (!lastSnapshot) return;
   const snap = lastSnapshot;
+  // 복습 세션 되돌리기: 세션 스냅샷 복원 후 같은 문제 다시.
+  if (snap.review) {
+    state.review = snap.review;
+    saveState();
+    answered = false;
+    lastSnapshot = null;
+    renderQuestion(snap.qRef);
+    renderReviewHUD();
+    ingredientsToast('제출을 되돌렸습니다', '#1976d2');
+    return;
+  }
   state.correct = snap.stateBefore.correct;
   state.wrong = snap.stateBefore.wrong;
   state.total = snap.stateBefore.total;
@@ -1195,6 +1315,8 @@ function undoSubmission() {
   else state.wrongSet.delete(snap.qRef.id);
   state.seenCounts[snap.qRef.id] = snap.stateBefore.seenCountBefore;
   if (state.seenCounts[snap.qRef.id] === 0) delete state.seenCounts[snap.qRef.id];
+  if (snap.stateBefore.progressResultBefore === undefined) delete state.progressResult[snap.qRef.id];
+  else state.progressResult[snap.qRef.id] = snap.stateBefore.progressResultBefore;
   lastSnapshot = null;
   saveState();
   updateStats();
@@ -1204,12 +1326,236 @@ function undoSubmission() {
 
 function nextQuestion() {
   lastSnapshot = null;
+  if (reviewActive()) { renderReviewQuestion(); return; }
+  const pool = getPoolIds();
+  if (pool.length === 0) {
+    renderEmpty('출제 가능한 문제가 없습니다. 필터를 해제하거나 숙지 목록에서 일부 항목을 해제하세요.');
+    return;
+  }
+  // 일반 풀이에서 이 풀의 모든 문제를 한 번씩 다 풀면 완료 화면 (무한 재출제 방지).
+  // '틀린 문제만/북마크만'은 반복 학습 모드라 완료 없이 계속 출제.
+  const studyFilter = state.filters.wrong || state.filters.bookmark;
+  if (!studyFilter) {
+    const unsolved = pool.filter(id => !(id in state.progressResult));
+    if (unsolved.length === 0) { renderAllSolved(); return; }
+  }
   const q = generateQuestion();
   if (!q) {
     renderEmpty('출제 가능한 문제가 없습니다. 필터를 해제하거나 숙지 목록에서 일부 항목을 해제하세요.');
     return;
   }
   renderQuestion(q);
+}
+
+// 현재 풀의 모든 문제를 한 번씩 푼 상태 — 완료 화면.
+function renderAllSolved() {
+  currentQuestion = null;
+  answered = false;
+  const pool = getPoolIds();
+  const solved = pool.filter(id => id in state.progressResult);
+  const correct = solved.filter(id => state.progressResult[id] === true).length;
+  const wrong = solved.length - correct;
+  quizArea.innerHTML = `<div class="card"><div class="empty-state">` +
+    `🎉 <strong>한 바퀴 완료!</strong><br>` +
+    `<span style="font-size:0.9em;color:#555;line-height:1.7;display:inline-block;margin:8px 0 14px;">` +
+    `이 풀의 <strong>${pool.length}세트</strong>를 모두 한 번씩 풀었어요. (정답 ${correct} · 오답 ${wrong})<br>` +
+    `틀린 문제를 반복 학습하려면 위의 <strong>📕 오답 집중 복습</strong>을 이용하세요.</span><br>` +
+    `<button id="againBtn" class="io-btn" style="background:#2e7d4a;color:#fff;border-color:#2e7d4a;">🔄 처음부터 다시 풀기</button>` +
+    `<div style="font-size:0.8em;color:#888;margin-top:8px;">진행상황(푼·정답·오답)만 초기화 · 오답·북마크·숙지는 유지</div>` +
+    `</div></div>`;
+  document.getElementById('againBtn').addEventListener('click', () => {
+    state.progressResult = {};
+    state.seenCounts = {};
+    state.correct = 0; state.wrong = 0; state.total = 0;
+    recentIds = [];
+    saveState();
+    updateStats();
+    nextQuestion();
+  });
+  updateStats();
+}
+
+// ============================================================
+// 오답/슈퍼오답 집중 복습 (퀴즐렛식 라운드 복습)
+//   state.review = null 또는 { source:'wrong'|'super', ids[], streak{}, round,
+//     roundSize, queue[], correctTally, wrongTally }
+//   정복 = 연속 2번 정답(streak>=2). 틀리면 streak=0.
+//   복습 중엔 전역 통계/오답세트를 건드리지 않음(빼기·넣기 버튼 제외).
+// ============================================================
+const REVIEW_CLEAR_STREAK = 2;
+function reviewActive() { return !!state.review; }
+function reviewSource() { return state.review ? (state.review.source || 'wrong') : null; }
+function reviewIdValid(id) {
+  const [type, target] = id.split(/:(.+)/);
+  if (type === 'type1') { const a = data.ingredientToAttrs[target]; return !!a && a.length > 0; }
+  const s = data.attributes.find(x => x.name === target);
+  return !!s && s.ingredients.length > 0;
+}
+function getReviewIds(source) {
+  const set = source === 'super' ? state.superWrongSet : state.wrongSet;
+  return [...set].filter(id => !state.masterSet.has(id) && reviewIdValid(id));
+}
+function beginReview(source) {
+  if (reviewActive()) {
+    ingredientsToast('이미 복습이 진행 중입니다. "복습 종료" 후 다시 시작하세요.', '#c62828');
+    return;
+  }
+  const ids = getReviewIds(source);
+  if (ids.length === 0) {
+    ingredientsToast(source === 'super' ? '슈퍼오답이 없습니다' : '복습할 오답이 없습니다', '#c62828');
+    return;
+  }
+  state.review = { source, ids, streak: {}, round: 1, roundSize: ids.length, queue: shuffle(ids), correctTally: 0, wrongTally: 0 };
+  lastSnapshot = null;
+  answered = false;
+  saveState();
+  updateReviewUI();
+  nextQuestion();
+}
+function startReview() { beginReview('wrong'); }
+function startSuperReview() { beginReview('super'); }
+function endReview() {
+  state.review = null;
+  lastSnapshot = null;
+  answered = false;
+  saveState();
+  updateReviewUI();
+  nextQuestion();
+}
+function reviewClearedCount() {
+  const R = state.review;
+  if (!R) return 0;
+  return R.ids.filter(id => (R.streak[id] || 0) >= REVIEW_CLEAR_STREAK).length;
+}
+function pickReviewId() {
+  const R = state.review;
+  if (!R) return null;
+  R.queue = (R.queue || []).filter(id => reviewIdValid(id) && (R.streak[id] || 0) < REVIEW_CLEAR_STREAK);
+  if (R.queue.length === 0) {
+    const remaining = R.ids.filter(id => reviewIdValid(id) && (R.streak[id] || 0) < REVIEW_CLEAR_STREAK);
+    if (remaining.length === 0) return null;
+    R.round = (R.round || 1) + 1;
+    R.roundSize = remaining.length;
+    R.queue = shuffle(remaining);
+    saveState();
+  }
+  return R.queue[0];
+}
+function renderReviewQuestion() {
+  const id = pickReviewId();
+  if (!id) { renderReviewComplete(); return; }
+  const q = buildQuestion(id);
+  if (!q) { // 데이터가 바뀌어 못 만들면 세션에서 제거하고 다음
+    const R = state.review;
+    R.queue = R.queue.filter(x => x !== id);
+    R.ids = R.ids.filter(x => x !== id);
+    saveState();
+    renderReviewQuestion();
+    return;
+  }
+  renderQuestion(q);
+  renderReviewHUD();
+}
+function renderReviewComplete() {
+  currentQuestion = null;
+  answered = false;
+  const R = state.review;
+  const total = R ? R.ids.length : 0;
+  const sup = reviewSource() === 'super';
+  quizArea.innerHTML = `<div class="card"><div class="empty-state">🎉 <strong>${sup ? '슈퍼오답' : '오답'} 복습 완료!</strong><br>` +
+    `<span style="font-size:0.9em;color:#666;line-height:1.6;display:inline-block;margin-top:6px;">` +
+    `이 세션의 ${sup ? '슈퍼오답' : '오답'} ${total}문제를 모두 정복했어요.<br>"복습 종료"로 일반 풀이로 돌아갑니다.</span></div></div>`;
+  renderReviewHUD();
+}
+function reviewRecord(isCorrect) {
+  const R = state.review;
+  if (!R || !currentQuestion) return;
+  const id = currentQuestion.id;
+  lastSnapshot = { review: JSON.parse(JSON.stringify(R)), qRef: currentQuestion };
+  if (isCorrect) {
+    R.streak[id] = Math.min(REVIEW_CLEAR_STREAK, (R.streak[id] || 0) + 1);
+    R.correctTally++;
+  } else {
+    R.streak[id] = 0;
+    R.wrongTally++;
+  }
+  if (R.queue[0] === id) R.queue.shift();
+  saveState();
+}
+// 복습 중 "이 문제 숙지됨 → 현재 노트에서 빼기" (오답/슈퍼오답 중 온 쪽)
+function reviewRemoveCurrent() {
+  const R = state.review;
+  if (!R || !currentQuestion) return;
+  const id = currentQuestion.id;
+  const sup = reviewSource() === 'super';
+  (sup ? state.superWrongSet : state.wrongSet).delete(id);
+  R.ids = R.ids.filter(x => x !== id);
+  R.queue = (R.queue || []).filter(x => x !== id);
+  delete R.streak[id];
+  if (R.roundSize > 0) R.roundSize = Math.max(0, R.roundSize - 1);
+  saveState();
+  updateStats();
+  ingredientsToast((sup ? '슈퍼오답' : '오답') + ' 목록·복습에서 제외했습니다', '#6a1b9a');
+  answered = false;
+  nextQuestion();
+}
+// 복습에서 아직 정복 못 한(남은) 문제를 슈퍼오답 목록에 넣고 복습 종료
+function reviewDumpRemainingToSuper() {
+  const R = state.review;
+  if (!R) return;
+  const remaining = R.ids.filter(id => reviewIdValid(id) && (R.streak[id] || 0) < REVIEW_CLEAR_STREAK);
+  if (remaining.length === 0) {
+    endReview();
+    ingredientsToast('남은(못 외운) 문제가 없어 복습을 종료했습니다', '#6a1b9a');
+    return;
+  }
+  remaining.forEach(id => state.superWrongSet.add(id)); // 오답 목록은 그대로 유지
+  saveState();
+  endReview();
+  updateStats();
+  ingredientsToast(remaining.length + '문제를 슈퍼오답 목록에 넣었습니다', '#c62828');
+}
+function skipReview() {
+  const R = state.review;
+  if (R && R.queue.length > 1) { R.queue.push(R.queue.shift()); saveState(); }
+  answered = false;
+  nextQuestion();
+}
+function renderReviewHUD() {
+  const R = state.review;
+  if (!R) return;
+  const total = R.ids.length;
+  const cleared = reviewClearedCount();
+  const remaining = total - cleared;
+  const nearDone = R.ids.filter(id => (R.streak[id] || 0) === 1).length;
+  const badge = document.getElementById('reviewModeBadge');
+  if (badge) badge.textContent = reviewSource() === 'super' ? '🔥 슈퍼오답 복습' : '📕 오답 복습';
+  const roundSize = R.roundSize || total;
+  const pos = Math.min(roundSize, roundSize - (R.queue ? R.queue.length : 0) + 1);
+  const roundInfo = remaining > 0 ? ` · 라운드 ${R.round} (${Math.max(pos, 0)}/${roundSize})` : ' · 완료';
+  const el = document.getElementById('reviewProgress');
+  if (el) el.innerHTML =
+    `정복 <strong>${cleared}</strong> / ${total} · 남음 <strong>${remaining}</strong>` +
+    ` <span style="color:#7e57c2;">(한 번 맞힘 ${nearDone})</span>${roundInfo}<br>` +
+    `이번 세션 정답 <strong>${R.correctTally}</strong> · 오답 <strong>${R.wrongTally}</strong>`;
+}
+function updateReviewUI() {
+  const active = reviewActive();
+  const bar = document.getElementById('reviewBar');
+  const fb = document.getElementById('filterBar');
+  const st = document.querySelector('.stats');
+  if (bar) bar.style.display = active ? '' : 'none';
+  if (fb) fb.style.display = active ? 'none' : '';
+  if (st) st.style.display = active ? 'none' : '';
+  const dump = document.getElementById('reviewDumpBtn');
+  if (dump) dump.style.display = (active && reviewSource() === 'wrong') ? '' : 'none';
+  updateReviewAvail();
+}
+function updateReviewAvail() {
+  const w = document.getElementById('reviewAvail');
+  if (w) w.textContent = getReviewIds('wrong').length;
+  const s = document.getElementById('superAvail');
+  if (s) s.textContent = getReviewIds('super').length;
 }
 
 // ============================================================
@@ -1252,25 +1598,46 @@ function toggleMaster() {
   }
 }
 
+// 진행률 기준 세트: 유형/＃ 필터 + 숙지 제외만 반영 (틀린문제만·북마크만 같은 학습 필터는 무시).
+function getProgressBaseIds() {
+  const allIngredients = Object.keys(data.ingredientToAttrs);
+  const allAttrNames = data.attributes.map(a => a.name);
+  const includeType1 = state.filters.type1 || !state.filters.type2;
+  const includeType2 = state.filters.type2 || !state.filters.type1;
+  const ids = [];
+  if (includeType1) for (const ing of allIngredients) ids.push('type1:' + ing);
+  if (includeType2) for (const attr of allAttrNames) {
+    const sec = data.attributes.find(a => a.name === attr);
+    if (sec.ingredients.length > 0) ids.push('type2:' + attr);
+  }
+  let base = ids.filter(id => !state.masterSet.has(id));
+  if (state.filters.highOnly) base = base.filter(id => getIdPriority(id) === 'high');
+  if (state.filters.includeLow === false) base = base.filter(id => getIdPriority(id) !== 'low');
+  return base;
+}
+
 function updateStats() {
-  const poolIds = getPoolIds();
-  const poolSize = poolIds.length;
-  const seen1 = poolIds.filter(id => (state.seenCounts[id] || 0) >= 1).length;
-  const seen2 = poolIds.filter(id => (state.seenCounts[id] || 0) >= 2).length;
-  document.getElementById('statPool').textContent = poolSize;
-  document.getElementById('statSeen1').textContent = seen1 + '/' + poolSize;
-  document.getElementById('statSeen2').textContent = seen2 + '/' + poolSize;
-  document.getElementById('statCorrect').textContent = state.correct;
-  document.getElementById('statWrong').textContent = state.wrong;
+  // 전체 세트 = 출제 가능한 모든 문제 경우의 수. 푼 = 그 중 답한 것. 정답/오답 = 푼 것의 최근 결과.
+  const base = getProgressBaseIds();
+  const solvedIds = base.filter(id => id in state.progressResult);
+  const solved = solvedIds.length;
+  const correct = solvedIds.filter(id => state.progressResult[id] === true).length;
+  const wrong = solved - correct;
+  document.getElementById('statPool').textContent = base.length;
+  document.getElementById('statSolved').textContent = solved + '/' + base.length;
+  document.getElementById('statCorrect').textContent = correct;
+  document.getElementById('statWrong').textContent = wrong;
   document.getElementById('statBookmark').textContent = state.bookmarkSet.size;
   document.getElementById('statMaster').textContent = state.masterSet.size;
-  document.getElementById('statTotal').textContent = state.total;
   document.getElementById('wrongCount').textContent = state.wrongSet.size;
+  document.getElementById('superWrongCount').textContent = state.superWrongSet.size;
   document.getElementById('bookmarkCount').textContent = state.bookmarkSet.size;
   document.getElementById('masterCount').textContent = state.masterSet.size;
   renderReviewList('wrongList', state.wrongSet);
+  renderReviewList('superWrongList', state.superWrongSet);
   renderReviewList('bookmarkList', state.bookmarkSet);
   renderReviewList('masterList', state.masterSet);
+  updateReviewAvail();
   updateHighPriorityList();
 }
 
@@ -1316,6 +1683,7 @@ function renderReviewList(elId, set) {
     b.addEventListener('click', () => {
       const id = b.dataset.id;
       if (b.dataset.list === 'wrongList') state.wrongSet.delete(id);
+      else if (b.dataset.list === 'superWrongList') state.superWrongSet.delete(id);
       else if (b.dataset.list === 'masterList') state.masterSet.delete(id);
       else state.bookmarkSet.delete(id);
       saveState();
@@ -1447,6 +1815,7 @@ async function importData() {
         Object.assign(state, fresh);
         setupFilters();
         updateStats();
+        updateReviewUI();
         nextQuestion();
       } catch {
         alert('파일 형식이 올바르지 않습니다.');
@@ -1471,6 +1840,7 @@ async function importData() {
         Object.assign(state, fresh);
         setupFilters();
         updateStats();
+        updateReviewUI();
         nextQuestion();
       } catch {
         alert('파일 형식이 올바르지 않습니다.');
@@ -1485,11 +1855,12 @@ function setupReset() {
   document.getElementById('exportBtn').addEventListener('click', exportData);
   document.getElementById('importBtn').addEventListener('click', importData);
   document.getElementById('resetBtn').addEventListener('click', () => {
-    if (!confirm('진행상황(정답·오답·누적 출제 카운트)만 초기화합니다.\n북마크·오답·숙지 목록은 유지됩니다.\n계속할까요?')) return;
+    if (!confirm('진행상황(푼 문제·정답·오답 카운트)만 초기화합니다.\n북마크·오답·슈퍼오답·숙지 목록은 유지됩니다.\n계속할까요?')) return;
     state.correct = 0;
     state.wrong = 0;
     state.total = 0;
     state.seenCounts = {};
+    state.progressResult = {};
     saveState();
     updateStats();
   });
@@ -1551,13 +1922,21 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
+  // - → 복습 모드: 현재 문제를 노트에서 빼기 (입력 필드 타이핑 중이면 무시)
+  if (e.key === '-' && reviewActive()) {
+    if (e.target.tagName === 'INPUT') return;
+    e.preventDefault();
+    reviewRemoveCurrent();
+    return;
+  }
+
   // 이하는 답변 단계에서만
   if (answered) return;
 
   // > (Shift+.) → 건너뛰기
   if (e.key === '>') {
     e.preventDefault();
-    nextQuestion();
+    if (reviewActive()) skipReview(); else nextQuestion();
     return;
   }
 
@@ -1588,8 +1967,13 @@ function start() {
 
   setupFilters();
   setupReset();
+  document.getElementById('reviewStartBtn').addEventListener('click', startReview);
+  document.getElementById('superReviewStartBtn').addEventListener('click', startSuperReview);
+  document.getElementById('reviewDumpBtn').addEventListener('click', reviewDumpRemainingToSuper);
+  document.getElementById('reviewEndBtn').addEventListener('click', endReview);
   updateStats();
   updateHighPriorityList();
+  updateReviewUI();
   document.getElementById('backupIndicator').addEventListener('click', setupOrContinueAutoBackup);
   initBackupSystem();
 
