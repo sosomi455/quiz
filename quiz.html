@@ -66,6 +66,22 @@
     color: #ccc;
   }
   .bookmark-btn.active { color: #ff9800; }
+  .wrong-btn {
+    background: none; border: none; font-size: 1.3em;
+    cursor: pointer; padding: 0; line-height: 1;
+    opacity: 0.3; filter: grayscale(1);
+    transition: opacity .15s ease, filter .15s ease;
+  }
+  .wrong-btn.active { opacity: 1; filter: none; }
+  .chapter-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    font-weight: 700;
+    background: #e8eef7;
+    color: #37474f;
+  }
   .question {
     font-size: 1.05em;
     margin: 12px 0 16px;
@@ -645,6 +661,7 @@
       <tr><td><kbd>&gt;</kbd></td><td>건너뛰기</td></tr>
       <tr><td><kbd>Esc</kbd></td><td>되돌리기 (제출 후)</td></tr>
       <tr><td><kbd>*</kbd></td><td>북마크 토글</td></tr>
+      <tr><td><kbd>!</kbd></td><td>오답 노트 추가/제외 토글</td></tr>
       <tr><td><kbd>+</kbd></td><td>숙지 토글 (정답 시)</td></tr>
       <tr><td><kbd>1</kbd>~<kbd>9</kbd></td><td>객관식 / OX 보기 선택</td></tr>
       <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>진행상황 내보내기 (파일 저장)</td></tr>
@@ -702,10 +719,14 @@
 <div class="card">
   <div class="header">
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span class="chapter-badge" id="chapterBadge" style="display:none"></span>
       <span class="mode-badge" id="modeBadge">정의 → 용어</span>
       <span class="priority-badge" id="priorityBadge" style="display:none"></span>
     </div>
-    <button class="bookmark-btn" id="bookmarkBtn" title="북마크 — 헷갈리는 문제 표시 (단축키: *)">☆</button>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="wrong-btn" id="wrongToggleBtn" title="오답 노트 — 눌러서 추가/제외 (단축키: !)">📕</button>
+      <button class="bookmark-btn" id="bookmarkBtn" title="북마크 — 헷갈리는 문제 표시 (단축키: *)">☆</button>
+    </div>
   </div>
   <div class="question" id="questionText"></div>
   <div id="answerArea"></div>
@@ -1663,14 +1684,24 @@
   function reviewActive() { return !!appState.review; }
   function reviewSource() { return appState.review ? (appState.review.source || 'wrong') : null; }
   // 선택 단원에서 특정 플래그(everWrong/superWrong)가 켜진, 숙지 아닌 문제 ID 목록.
+  // data에 같은 문제를 여러 번 넣으면 동일 ID를 가진 문제 객체가 여러 개 생기는데
+  // (의도적 허용), 복습은 모든 걸 ID 기준(streak/qById)으로 다루므로 중복 ID가 큐에
+  // 들어가면 한 라운드 안에서 같은 문제가 두 번 출제되고 streak도 공유돼 조기 정복된다.
+  // → 여기서 ID를 유일하게 만들어 각 문제가 라운드당 정확히 한 번만 나오게 한다.
   function getFlaggedIds(chapters, flag) {
     const set = new Set(chapters);
-    return allQuestions.filter(q => {
-      if (!(q.chapter == null || set.has(q.chapter))) return false;
+    const seen = new Set();
+    const ids = [];
+    for (const q of allQuestions) {
+      if (!(q.chapter == null || set.has(q.chapter))) continue;
       const st = getQ(q.id);
-      if (st.mastered) return false;
-      return st[flag];
-    }).map(q => q.id);
+      if (st.mastered) continue;
+      if (!st[flag]) continue;
+      if (seen.has(q.id)) continue;
+      seen.add(q.id);
+      ids.push(q.id);
+    }
+    return ids;
   }
   function getReviewWrongIds(chapters) { return getFlaggedIds(chapters, 'everWrong'); }
   function getSuperWrongIds(chapters) { return getFlaggedIds(chapters, 'superWrong'); }
@@ -1756,6 +1787,12 @@
       R.round = (R.round || 1) + 1;
       R.roundSize = remaining.length;
       R.queue = shuffle(remaining);
+      // 라운드 경계 가드: 직전에 푼 문제가 새 라운드 맨 앞에 오면 뒤로 밀어
+      // 바로 연속 출제(방금 푼 문제 즉시 재출제)를 막는다. 남은 게 1개면 어쩔 수 없이 반복.
+      const prevId = currentQ ? currentQ.id : null;
+      if (prevId != null && R.queue.length > 1 && R.queue[0] === prevId) {
+        R.queue.push(R.queue.shift());
+      }
       saveAppState();
     }
     return qById.get(R.queue[0]) || null;
@@ -1878,6 +1915,8 @@
   const dontKnowBtn = document.getElementById('dontKnowBtn');
   const resultDiv = document.getElementById('result');
   const bookmarkBtn = document.getElementById('bookmarkBtn');
+  const wrongToggleBtn = document.getElementById('wrongToggleBtn');
+  const chapterBadge = document.getElementById('chapterBadge');
   const questionCardEl = document.querySelector('.card');
   const masterBtn = document.getElementById('masterBtn');
   const undoBtn = document.getElementById('undoBtn');
@@ -2179,6 +2218,7 @@
           + ' 빼고 복습에서도 제외 (단축키: -)';
       }
     }
+    updateWrongToggle();
   }
 
   function undoSubmission() {
@@ -2321,6 +2361,7 @@
         wrong: qState.wrong,
         lastResult: qState.lastResult,
         lastCycle: qState.lastCycle,
+        everWrong: qState.everWrong,
       },
     };
     qState.attempts++;
@@ -2485,12 +2526,43 @@
       priorityBadgeEl.style.display = 'none';
     }
     questionCardEl.classList.toggle('is-high-priority', q.priority === 'high');
+    // 현재 문제 단원 표시
+    if (chapterBadge) {
+      chapterBadge.textContent = (q.chapter != null && CHAPTERS[q.chapter])
+        ? `${q.chapter}단원 · ${CHAPTERS[q.chapter]}`
+        : '미분류';
+      chapterBadge.style.display = '';
+    }
     questionText.innerHTML = q.promptHtml;
     const st = getQ(q.id);
     bookmarkBtn.textContent = st.bookmarked ? '★' : '☆';
     bookmarkBtn.classList.toggle('active', st.bookmarked);
     renderAnswerArea(q);
     updateButtons();
+  }
+  // 오답 노트 토글 아이콘 상태 갱신 (복습 중엔 숨김 — 전용 "빼기" 버튼 사용)
+  function updateWrongToggle() {
+    if (!wrongToggleBtn) return;
+    if (!currentQ || reviewActive()) { wrongToggleBtn.style.display = 'none'; return; }
+    wrongToggleBtn.style.display = '';
+    const on = !!getQ(currentQ.id).everWrong;
+    wrongToggleBtn.classList.toggle('active', on);
+    wrongToggleBtn.title = on
+      ? '오답 노트에 있음 — 눌러서 제외 (단축키: !)'
+      : '오답 노트에 없음 — 눌러서 추가 (단축키: !)';
+  }
+  // 오답 노트 추가/제외 (사용자가 직접 토글)
+  function toggleWrongNote() {
+    if (!currentQ || reviewActive()) return;
+    const q = getQ(currentQ.id);
+    q.everWrong = !q.everWrong;
+    saveAppState();
+    updateWrongToggle();
+    updateWrongList();
+    updateReviewAvail();
+    updateStats();
+    showToast(q.everWrong ? '📕 오답 노트에 추가했습니다' : '오답 노트에서 뺐습니다',
+              q.everWrong ? '#c62828' : '#6a1b9a');
   }
   // 문제/버튼 영역을 빈 상태(완료/없음)로 정리
   function clearCardControls() {
@@ -2501,6 +2573,8 @@
     masterBtn.style.display = 'none';
     undoBtn.style.display = 'none';
     if (reviewRemoveBtn) reviewRemoveBtn.style.display = 'none';
+    if (wrongToggleBtn) wrongToggleBtn.style.display = 'none';
+    if (chapterBadge) chapterBadge.style.display = 'none';
     priorityBadgeEl.style.display = 'none';
     questionCardEl.classList.remove('is-high-priority');
   }
@@ -2524,6 +2598,8 @@
       dontKnowBtn.style.display = 'none';
       masterBtn.style.display = 'none';
       undoBtn.style.display = 'none';
+      if (wrongToggleBtn) wrongToggleBtn.style.display = 'none';
+      if (chapterBadge) chapterBadge.style.display = 'none';
       priorityBadgeEl.style.display = 'none';
       questionCardEl.classList.remove('is-high-priority');
       updateStats();
@@ -2546,6 +2622,8 @@
       dontKnowBtn.style.display = 'none';
       masterBtn.style.display = 'none';
       undoBtn.style.display = 'none';
+      if (wrongToggleBtn) wrongToggleBtn.style.display = 'none';
+      if (chapterBadge) chapterBadge.style.display = 'none';
       priorityBadgeEl.style.display = 'none';
       questionCardEl.classList.remove('is-high-priority');
       updateStats();
@@ -2565,19 +2643,15 @@
     renderReviewHUD();
   }
   function renderReviewComplete() {
-    currentQ = null;
     const R = appState.review;
     const total = R ? R.ids.length : 0;
     const isSuper = reviewSource() === 'super';
-    modeBadge.textContent = '복습 완료';
-    modeBadge.className = 'mode-badge';
-    questionText.innerHTML = `🎉 <strong>${isSuper ? '슈퍼오답' : '오답'} 복습 완료!</strong><br>` +
-      `<span style="font-size:0.9em;color:#666;line-height:1.6;display:inline-block;margin-top:6px;">` +
-      `이 세션의 ${isSuper ? '슈퍼오답' : '오답'} ${total}문제를 모두 정복했어요.<br>` +
-      '"복습 종료"를 누르면 일반 풀이로 돌아갑니다. (영구 오답 노트는 그대로 유지됩니다)' +
-      '</span>';
-    clearCardControls();
-    renderReviewHUD();
+    // 복습을 자동 종료 → 일반 풀이 모드로 복귀 (복습모드가 켜진 채 남지 않도록).
+    // endReview()가 review 상태를 비우고 일반 문제를 다시 렌더한다.
+    endReview();
+    showToast(
+      `🎉 ${isSuper ? '슈퍼오답' : '오답'} 복습 완료! ${total}문제 정복 — 일반 풀이로 돌아왔습니다`,
+      '#2e7d32');
   }
   // 복습 상단 배너(진행도) 갱신
   function renderReviewHUD() {
@@ -2922,6 +2996,7 @@
   });
   dontKnowBtn.addEventListener('click', () => handleSubmit(null, true));
   bookmarkBtn.addEventListener('click', toggleBookmark);
+  if (wrongToggleBtn) wrongToggleBtn.addEventListener('click', toggleWrongNote);
   masterBtn.addEventListener('click', toggleMaster);
   if (reviewRemoveBtn) reviewRemoveBtn.addEventListener('click', reviewRemoveCurrent);
   undoBtn.addEventListener('click', undoSubmission);
@@ -3155,6 +3230,13 @@
     if (e.key === '*') {
       e.preventDefault();
       toggleBookmark();
+      return;
+    }
+
+    // ! (Shift+1) → 오답 노트 추가/제외 토글 (복습 중 아닐 때)
+    if (e.key === '!' && currentQ && !reviewActive()) {
+      e.preventDefault();
+      toggleWrongNote();
       return;
     }
 
