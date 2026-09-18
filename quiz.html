@@ -2028,6 +2028,11 @@
   const _focusedAt = new WeakMap();
   const _userValue = new WeakMap();
 
+  // 터치 기기(폰/태블릿): 포커스 시 readonly 를 걸면 iOS/안드로이드에서 키보드가
+  // 안 뜨는 문제가 있어, readonly 잠금은 데스크톱에서만 사용하고 터치에선 값 복구만 한다.
+  const IS_TOUCH = (typeof window !== 'undefined') &&
+    (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
+
   function attachAutofillGuard(inp) {
     _userValue.set(inp, inp.value || '');
     inp.addEventListener('focus', () => {
@@ -2035,15 +2040,20 @@
       _focusedAt.set(inp, performance.now());
       const expected = _userValue.get(inp) || '';
       if (inp.value !== expected) inp.value = expected;
-      inp.setAttribute('readonly', '');
       const restore = () => {
         const e = _userValue.get(inp) || '';
         if (inp.value !== e) inp.value = e;
       };
-      requestAnimationFrame(() => {
-        inp.removeAttribute('readonly');
-        restore();
-      });
+      if (IS_TOUCH) {
+        // 키보드를 죽이지 않도록 readonly 없이 값만 복구.
+        requestAnimationFrame(restore);
+      } else {
+        inp.setAttribute('readonly', '');
+        requestAnimationFrame(() => {
+          inp.removeAttribute('readonly');
+          restore();
+        });
+      }
       setTimeout(restore, 50);
       setTimeout(restore, 200);
     });
@@ -2080,6 +2090,11 @@
   // 포커스 이동: from blur → IME trap focus(컴포지션 흡수) → 다음 프레임에 to focus.
   function moveFocusSafely(from, to) {
     if (!to) return false;
+    if (IS_TOUCH) {
+      // 터치: 트랩/rAF 를 거치면 키보드가 내려가므로 바로 다음 칸으로 포커스.
+      to.focus({ preventScroll: true });
+      return true;
+    }
     const trap = getImeTrap();
     from.blur();
     trap.value = '';
