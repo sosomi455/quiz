@@ -3121,17 +3121,38 @@
     markFileSaved();
     showToast('저장됨', '#2e7d32');
   }
+  // 메신저/메모 앱을 거치며 생긴 흔한 손상 복구:
+  // BOM 제거, 예쁜따옴표(“”‘’)→일반따옴표, 바깥 { } 바깥의 잡텍스트 잘라내기.
+  function sanitizeStateText(t) {
+    if (!t) return '';
+    t = String(t).replace(/^﻿/, '').trim();
+    t = t.replace(/[“”″]/g, '"').replace(/[‘’′]/g, "'");
+    const first = t.indexOf('{');
+    const last = t.lastIndexOf('}');
+    if (first >= 0 && last > first) t = t.slice(first, last + 1);
+    return t;
+  }
   // 붙여넣기/파일 텍스트를 파싱해 현재 기기 진행상황에 적용. 성공 여부 반환.
   function applyImportedText(text) {
+    const cleaned = sanitizeStateText(text);
     let parsed;
     try {
-      parsed = JSON.parse(text);
+      parsed = JSON.parse(cleaned);
     } catch {
-      showToast('형식이 올바르지 않습니다 (JSON 아님)', '#c62828');
+      // 여는 { 는 있는데 파싱 실패 → 대개 중간에 잘린 것.
+      const looksCut = cleaned.indexOf('{') >= 0 &&
+        (cleaned.match(/\{/g) || []).length !== (cleaned.match(/\}/g) || []).length;
+      showToast(looksCut
+        ? '내용이 중간에 잘린 것 같아요. 카톡 말고 이메일/메모로 옮겨보세요'
+        : '형식이 올바르지 않습니다 (JSON 아님)', '#c62828');
       return false;
     }
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
       showToast('형식이 올바르지 않습니다', '#c62828');
+      return false;
+    }
+    if (!parsed.questions || typeof parsed.questions !== 'object') {
+      showToast('진행상황 데이터가 아닌 것 같습니다', '#c62828');
       return false;
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
