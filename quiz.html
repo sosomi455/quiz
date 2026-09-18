@@ -669,6 +669,30 @@
   </div>
 </div>
 
+<div class="help-modal" id="transferModal" style="display:none">
+  <div class="help-content" style="width:520px;max-width:92vw;">
+    <div class="help-header">
+      <h3>📱 폰으로 진행상황 옮기기</h3>
+      <button class="help-close" id="transferClose" title="닫기">✕</button>
+    </div>
+    <p style="margin:4px 0 10px;font-size:0.86em;color:#555;line-height:1.6;">
+      파일 없이 <strong>복사 → 붙여넣기</strong>로 옮깁니다. 북마크·오답노트·슈퍼오답·가중치 모두 포함돼요.<br>
+      <strong>① PC</strong>: 아래 <em>복사</em> → 카톡'나에게'/메모/이메일에 붙여넣기 &nbsp;→&nbsp;
+      <strong>② 폰</strong>: 그 글을 전체 복사 → 이 화면 칸에 붙여넣고 <em>적용</em>
+    </p>
+    <textarea id="transferBox" spellcheck="false" autocapitalize="off" autocomplete="off"
+      style="width:100%;height:150px;box-sizing:border-box;font-family:monospace;font-size:0.78em;
+             border:1px solid #ccc;border-radius:8px;padding:8px;resize:vertical;white-space:pre;overflow:auto;"></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+      <button type="button" class="io-btn" id="transferCopyBtn" style="flex:1;min-width:120px;">① 복사 (PC에서)</button>
+      <button type="button" class="io-btn" id="transferApplyBtn" style="flex:1;min-width:120px;">② 적용 (폰에서)</button>
+    </div>
+    <p style="margin:10px 0 0;font-size:0.78em;color:#c62828;line-height:1.5;">
+      ⚠ <strong>적용</strong>을 누르면 이 기기의 현재 진행상황을 붙여넣은 내용으로 <strong>덮어씁니다.</strong>
+    </p>
+  </div>
+</div>
+
 <div class="filter-section">
   <div class="filter-label">
     <span>단원 선택</span>
@@ -750,6 +774,7 @@
   <button type="button" id="resetDataBtn" title="현재 선택한 단원만 풀이 진행 초기화. 오답 노트·북마크·숙지·문제별 가중치는 유지">초기화</button>
   <button type="button" class="io-btn" id="exportBtn" title="진행상황을 파일로 저장 (단축키: Ctrl+S)">내보내기</button>
   <button type="button" class="io-btn" id="importBtn" title="저장된 파일에서 진행상황 불러오기">가져오기</button>
+  <button type="button" class="io-btn" id="textTransferBtn" title="파일 없이 복사-붙여넣기로 다른 기기(폰 등)에 진행상황 옮기기">📱 폰으로 옮기기</button>
 </div>
 
 <details>
@@ -3096,6 +3121,38 @@
     markFileSaved();
     showToast('저장됨', '#2e7d32');
   }
+  // 붙여넣기/파일 텍스트를 파싱해 현재 기기 진행상황에 적용. 성공 여부 반환.
+  function applyImportedText(text) {
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      showToast('형식이 올바르지 않습니다 (JSON 아님)', '#c62828');
+      return false;
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      showToast('형식이 올바르지 않습니다', '#c62828');
+      return false;
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+    appState = loadAppState();
+    migrateQuestionIds();
+    currentQ = null;
+    bookmarkedOnlyEl.checked = appState.bookmarkedOnly;
+    wrongOnlyEl.checked = appState.wrongOnly;
+    highOnlyEl.checked = appState.highOnly;
+    includeLowPriorityEl.checked = appState.includeLowPriority;
+    renderChapterChips();
+    updateBookmarkList();
+    updateWrongList();
+    updateMasterList();
+    updateHighPriorityList();
+    updateSuperWrongList();
+    updateReviewUI();
+    renderQuestion();
+    showToast('가져오기 완료', '#1976d2');
+    return true;
+  }
   async function importData() {
     if ('showOpenFilePicker' in window) {
       try {
@@ -3105,28 +3162,7 @@
           types: [{ description: 'JSON 파일', accept: { 'application/json': ['.json'] } }],
         });
         const text = await (await handle.getFile()).text();
-        try {
-          const parsed = JSON.parse(text);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-          appState = loadAppState();
-          migrateQuestionIds();
-          currentQ = null;
-          bookmarkedOnlyEl.checked = appState.bookmarkedOnly;
-          wrongOnlyEl.checked = appState.wrongOnly;
-          highOnlyEl.checked = appState.highOnly;
-          includeLowPriorityEl.checked = appState.includeLowPriority;
-          renderChapterChips();
-          updateBookmarkList();
-          updateWrongList();
-          updateMasterList();
-          updateHighPriorityList();
-          updateSuperWrongList();
-          updateReviewUI();
-          renderQuestion();
-          showToast('가져오기 완료', '#1976d2');
-        } catch {
-          showToast('파일 형식이 올바르지 않습니다', '#c62828');
-        }
+        applyImportedText(text);
         return;
       } catch (e) {
         if (e.name === 'AbortError') return;
@@ -3139,36 +3175,51 @@
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = ev => {
-        try {
-          const parsed = JSON.parse(ev.target.result);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-          appState = loadAppState();
-          migrateQuestionIds();
-          currentQ = null;
-          bookmarkedOnlyEl.checked = appState.bookmarkedOnly;
-          wrongOnlyEl.checked = appState.wrongOnly;
-          highOnlyEl.checked = appState.highOnly;
-          includeLowPriorityEl.checked = appState.includeLowPriority;
-          renderChapterChips();
-          updateBookmarkList();
-          updateWrongList();
-          updateMasterList();
-          updateHighPriorityList();
-          updateSuperWrongList();
-          updateReviewUI();
-          renderQuestion();
-          showToast('가져오기 완료', '#1976d2');
-        } catch {
-          showToast('파일 형식이 올바르지 않습니다', '#c62828');
-        }
-      };
+      reader.onload = ev => applyImportedText(ev.target.result);
       reader.readAsText(file);
     };
     input.click();
   }
+  // ── 텍스트(복사·붙여넣기) 전송 ──
+  function openTransferModal() {
+    // 칸은 비워둠: PC는 '복사'가 채워서 복사하고, 폰은 여기에 바로 붙여넣음.
+    const box = document.getElementById('transferBox');
+    box.value = '';
+    box.placeholder = 'PC: 아래 [① 복사]를 누르세요.\n폰: 복사해온 글을 여기에 붙여넣고 [② 적용]을 누르세요.';
+    document.getElementById('transferModal').style.display = 'flex';
+  }
+  function closeTransferModal() {
+    document.getElementById('transferModal').style.display = 'none';
+  }
+  async function copyTransferText() {
+    const box = document.getElementById('transferBox');
+    box.value = localStorage.getItem(STORAGE_KEY) || '{}';
+    try {
+      await navigator.clipboard.writeText(box.value);
+      showToast('복사됨 — 카톡/메모/이메일에 붙여넣으세요', '#2e7d32');
+    } catch {
+      // 클립보드 API 불가 시 수동 선택 유도
+      box.focus();
+      box.select();
+      try { document.execCommand('copy'); showToast('복사됨', '#2e7d32'); }
+      catch { showToast('칸을 길게 눌러 전체선택 후 복사하세요', '#c62828'); }
+    }
+  }
+  function applyTransferText() {
+    const text = document.getElementById('transferBox').value.trim();
+    if (!text) { showToast('붙여넣은 내용이 없습니다', '#c62828'); return; }
+    if (!confirm('이 기기의 현재 진행상황을 덮어씁니다. 계속할까요?')) return;
+    if (applyImportedText(text)) closeTransferModal();
+  }
   document.getElementById('exportBtn').addEventListener('click', exportData);
   document.getElementById('importBtn').addEventListener('click', importData);
+  document.getElementById('textTransferBtn').addEventListener('click', openTransferModal);
+  document.getElementById('transferClose').addEventListener('click', closeTransferModal);
+  document.getElementById('transferCopyBtn').addEventListener('click', copyTransferText);
+  document.getElementById('transferApplyBtn').addEventListener('click', applyTransferText);
+  document.getElementById('transferModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('transferModal')) closeTransferModal();
+  });
   document.getElementById('resetDataBtn').addEventListener('click', () => {
     const selected = (appState.chapters || []).slice().sort((a, b) => a - b);
     if (selected.length === 0) {
@@ -3207,6 +3258,12 @@
     // 도움말 열려있을 땐 Esc로 닫기만
     if (helpModal.style.display !== 'none') {
       if (e.key === 'Escape') { e.preventDefault(); hideHelp(); }
+      return;
+    }
+    // 폰으로 옮기기 모달 열려있을 땐 Esc로 닫기만 (칸 입력은 그대로 통과)
+    const transferModalEl = document.getElementById('transferModal');
+    if (transferModalEl.style.display !== 'none') {
+      if (e.key === 'Escape') { e.preventDefault(); closeTransferModal(); }
       return;
     }
     if (!currentQ) return;
